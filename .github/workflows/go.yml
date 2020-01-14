@@ -33,7 +33,7 @@ jobs:
         UPLOAD_BINTRAY_PASSWORD: ${{ secrets.UPLOAD_BINTRAY_PASSWORD }}
         DISTRIBUTION: "trusty,xenial,bionic,buster,wheezy"
         USERNAME: reddec
-        PROJECT: "jsonrpc2-gen"
+        PROJECT: "jsonrpc2"
       run: |
         for package in $(ls dist/*linux*.deb); do
           name=$(basename $package)

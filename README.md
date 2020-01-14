@@ -4,6 +4,7 @@
 [![license](https://img.shields.io/github/license/reddec/jsonrpc2.svg)](https://github.com/reddec/jsonrpc2)
 [![](https://godoc.org/github.com/reddec/jsonrpc2?status.svg)](http://godoc.org/github.com/reddec/jsonrpc2)
 [![donate](https://img.shields.io/badge/help_by️-donate❤-ff69b4)](http://reddec.net/about/#donate)
+[![Download](https://api.bintray.com/packages/reddec/debian/jsonrpc2/images/download.svg)](https://bintray.com/reddec/debian/jsonrpc2/_latestVersion)
 
 * [Formal specification](https://www.jsonrpc.org/specification)
 
