@@ -3,6 +3,7 @@ package jsonrpc2
 import (
 	"bytes"
 	"errors"
+	"net/http"
 	"sync/atomic"
 	"testing"
 )
@@ -425,4 +426,12 @@ func ExampleRouter_RegisterNamedOnly() {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func ExampleHandler() {
+	var router Router
+	router.RegisterPositionalOnly("sum", func(a, b int) (int, error) {
+		return a + b, nil
+	})
+	http.ListenAndServe(":8080", Handler(&router))
 }
