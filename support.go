@@ -3,6 +3,8 @@ package jsonrpc2
 import (
 	"encoding/json"
 	"fmt"
+	"log"
+	"net/http"
 )
 
 func ToArray(params json.RawMessage, expected int) ([]json.RawMessage, error) {
@@ -29,4 +31,31 @@ func UnmarshalArray(params json.RawMessage, args ...interface{}) error {
 		}
 	}
 	return nil
+}
+
+// Expose JSON-RPC router as HTTP handler. Supported methods: POST, PUT, PATCH
+func Handler(router *Router) http.HandlerFunc {
+	return func(writer http.ResponseWriter, request *http.Request) {
+		defer request.Body.Close()
+		switch request.Method {
+		case http.MethodPost, http.MethodPut, http.MethodPatch:
+		default:
+			http.Error(writer, "Method not supported", http.StatusMethodNotAllowed)
+			return
+		}
+		resp, isBatch := router.Invoke(request.Body)
+		writer.Header().Set("Content-Type", "application/json")
+		writer.WriteHeader(http.StatusOK)
+		enc := json.NewEncoder(writer)
+		enc.SetIndent("", "  ")
+		var err error
+		if isBatch {
+			err = enc.Encode(resp)
+		} else if len(resp) > 0 {
+			err = enc.Encode(resp[0])
+		}
+		if err != nil {
+			log.Println("server error:", err)
+		}
+	}
 }

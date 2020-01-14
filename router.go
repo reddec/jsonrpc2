@@ -84,7 +84,7 @@ func (caller *Router) Invoke(stream io.Reader) (responses []*Response, isBatch b
 		return
 	}
 	//TODO: global hooks
-	//TODO: invoke and hook
+	//TODO: per method hook
 
 	var numNotifications = 0
 	for _, invoke := range batch {
