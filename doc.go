@@ -66,6 +66,6 @@
 //
 // HTTP expose
 //
-// Helper `Server` can expose JSON-RPC over HTTP with supported methods POST, PUT, PATCH. For other
+// Helper `Handler` can expose JSON-RPC over HTTP with supported methods POST, PUT, PATCH. For other
 // methods server will return MethodNotAllowed (405)
 package jsonrpc2
