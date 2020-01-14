@@ -31,7 +31,7 @@ func ExampleGenerate() {
 	//	jsonrpc2 "github.com/reddec/jsonrpc2"
 	//)
 	//
-	//func RegisterUser(router *jsonrpc2.Router, wrap User) {
+	//func RegisterUser(router *jsonrpc2.Router, wrap User) []string {
 	//	router.RegisterFunc("User.Profile", func(params json.RawMessage, positional bool) (interface{}, error) {
 	//		var args struct {
 	//			Arg0 string `json:"token"`
@@ -48,5 +48,6 @@ func ExampleGenerate() {
 	//		return wrap.Profile(args.Arg0)
 	//	})
 	//
+	//	return []string{"User.Profile"}
 	//}
 }

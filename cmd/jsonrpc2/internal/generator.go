@@ -34,12 +34,19 @@ func (wg *WrapperGenerator) Generate(filename string) (jen.Code, error) {
 }
 
 func (wg *WrapperGenerator) generateFunction(info *Interface, fs *token.FileSet, file *ast.File) jen.Code {
-	return jen.Func().Id(wg.FuncName).Params(jen.Id("router").Op("*").Qual(Import, "Router"), jen.Id("wrap").Id(wg.TypeName)).BlockFunc(func(group *jen.Group) {
+	return jen.Func().Id(wg.FuncName).Params(jen.Id("router").Op("*").Qual(Import, "Router"), jen.Id("wrap").Id(wg.TypeName)).Index().String().BlockFunc(func(group *jen.Group) {
+		var usedMethods []*Method
 		for _, method := range info.Methods {
 			if ast.IsExported(method.Name) {
 				group.Id("router").Dot("RegisterFunc").Call(jen.Lit(method.Qual(wg.Namespace)), wg.generateLambda(method, fs, file)).Line()
+				usedMethods = append(usedMethods, method)
 			}
 		}
+		group.Return().Index().String().ValuesFunc(func(values *jen.Group) {
+			for _, m := range usedMethods {
+				values.Lit(m.Qual(wg.Namespace))
+			}
+		})
 	})
 }
 
