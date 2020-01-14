@@ -19,7 +19,6 @@ The library aims to bring JSON-RPC 2.0 support to Go. Goals:
 # Installation
 
 * (recommended) look at  [releases](https://github.com/reddec/jsonrpc2/releases) page and download
-* one line shell command:
 * build from source `go get -v github.com/reddec/jsonrpc2/cmd/...`
 * From bintray repository for most **debian**-based distribution (`trusty`, `xenial`, `bionic`, `buster`, `wheezy`):
 ```bash
