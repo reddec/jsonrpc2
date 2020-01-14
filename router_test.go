@@ -2,8 +2,11 @@ package jsonrpc2
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"net/http"
+	"net/http/httptest"
+	"reflect"
 	"sync/atomic"
 	"testing"
 )
@@ -401,6 +404,55 @@ func TestAppError(t *testing.T) {
 	if responses[0].Error.Message != "the summation error" {
 		t.Errorf("error message unexpectable got: %+v", responses[0].Error.Message)
 		return
+	}
+}
+
+func TestHandler(t *testing.T) {
+	router := &Router{}
+	err := router.RegisterPositionalOnly("sum", func(a, b int, c *int) (int, error) {
+		return a + b + *c, nil
+	})
+	if err != nil {
+		t.Error("reg function", err)
+		return
+	}
+	server := httptest.NewServer(Handler(router))
+	defer server.Close()
+
+	res, err := http.Post(server.URL, "application/json", bytes.NewBufferString(`{
+		"jsonrpc":"2.0",
+		"id": 1,
+		"method":"sum",
+		"params": [1, 2, 3]
+	}`))
+	if err != nil {
+		t.Errorf("request over http: %v", err)
+		return
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("status: %v", res.StatusCode)
+		return
+	}
+	var response Response
+	err = json.NewDecoder(res.Body).Decode(&response)
+	if err != nil {
+		t.Errorf("unmarshal: %v", err)
+		return
+	}
+
+	if bytes.Compare(response.ID, []byte("1")) != 0 {
+		t.Errorf("unmatched ID: got %v", string(response.ID))
+	}
+	if response.Version != "2.0" {
+		t.Errorf("version is not 2.0: %v", response.Version)
+	}
+	if response.Error != nil {
+		t.Errorf("failed: %+v", response.Error)
+		return
+	}
+	if v, ok := response.Result.(float64); !ok || v != 6 {
+		t.Errorf("not matched result: %v (%v)", response.Result, reflect.TypeOf(response.Result).Name())
 	}
 }
 
