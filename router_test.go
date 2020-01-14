@@ -402,3 +402,27 @@ func TestAppError(t *testing.T) {
 		return
 	}
 }
+
+func ExampleRouter_RegisterPositionalOnly() {
+	router := &Router{}
+	err := router.RegisterPositionalOnly("sum", func(a, b int) (int, error) {
+		return a + b, nil
+	})
+	if err != nil {
+		panic(err)
+	}
+}
+
+func ExampleRouter_RegisterNamedOnly() {
+	type Args struct {
+		A int `json:"a"`
+		B int `json:"b"`
+	}
+	router := &Router{}
+	err := router.RegisterNamedOnly("sum", func(params *Args) (int, error) {
+		return params.A + params.B, nil
+	})
+	if err != nil {
+		panic(err)
+	}
+}
