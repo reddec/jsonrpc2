@@ -1,0 +1,4 @@
+github.com/dave/jennifer v1.4.0 h1:tNJFJmLDVTLu+v05mVZ88RINa3vQqnyyWkTKWYz0CwE=
+github.com/dave/jennifer v1.4.0/go.mod h1:fIb+770HOpJ2fmN9EPPKOqm1vMGhB+TwXKMZhrIygKg=
+github.com/jessevdk/go-flags v1.4.1-0.20180331124232-1c38ed7ad0cc h1:unqembev+qAeQDOhvsahBm2Xla2M/cfQvjl+0MhkpOM=
+github.com/jessevdk/go-flags v1.4.1-0.20180331124232-1c38ed7ad0cc/go.mod h1:4FA24M0QyGHXBuZZK/XkWh8h0e1EYbRYJSGM75WSRxI=
