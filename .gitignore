@@ -1,1 +1,5 @@
 .idea
+/sample
+/build
+/test
+/dist

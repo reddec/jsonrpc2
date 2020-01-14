@@ -1,0 +1,53 @@
+project_name: jsonrpc2
+builds:
+- main: ./cmd/jsonrpc2-gen/main.go
+  binary: jsonrpc2-gen
+  env:
+  - CGO_ENABLED=0
+  goarch:
+    - amd64
+    - 386
+    - arm
+    - arm64
+  goarm:
+    - 5
+    - 6
+    - 7
+  goos:
+    - linux
+    - windows
+    - darwin
+  flags:
+    - -trimpath
+nfpms:
+  - name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
+    replacements:
+      Linux: linux
+      386: i386
+    homepage: https://github.com/reddec/jsonrpc2
+    maintainer: Baryshnikov Aleksandr <owner@reddec.net>
+    description: Tiny generator for Go to expose interfaces over JSON-RPC
+    license: Mozilla Public License Version 2.0
+    formats:
+      - deb
+archives:
+- replacements:
+    Linux: linux
+    386: i386
+  name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
+  files:
+    - LICENSE
+    - README.md
+  format: tar.gz
+checksum:
+  name_template: 'checksums.txt'
+snapshot:
+  name_template: "{{ .Tag }}-next"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^doc:'
+      - '^test:'
+      - '^build:'
