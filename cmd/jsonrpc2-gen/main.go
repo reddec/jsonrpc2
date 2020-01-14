@@ -3,7 +3,7 @@ package main
 import (
 	"github.com/dave/jennifer/jen"
 	"github.com/jessevdk/go-flags"
-	"jsonrpc2/cmd/jsonrpc2-gen/internal"
+	"github.com/reddec/jsonrpc2/cmd/jsonrpc2-gen/internal"
 	"log"
 	"os"
 	"strings"

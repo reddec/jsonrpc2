@@ -1,4 +1,4 @@
-module jsonrpc2
+module github.com/reddec/jsonrpc2
 
 go 1.13
 
