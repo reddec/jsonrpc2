@@ -21,6 +21,35 @@ type Method struct {
 	fs         *token.FileSet
 }
 
+func (mg *Method) Comment() string {
+	return strings.TrimSpace(mg.Definition.Doc.Text())
+}
+
+func (mg *Method) ReturnType() string {
+	return astPrint(mg.Type.Results.List[0].Type, mg.fs)
+}
+
+type arg struct {
+	Name string
+	Type string
+}
+
+func (mg *Method) Args() []arg {
+	if mg.Type.Params == nil || len(mg.Type.Params.List) == 0 {
+		return nil
+	}
+	var args []arg
+	for _, t := range mg.Type.Params.List {
+		for _, name := range t.Names {
+			args = append(args, arg{
+				Name: name.Name,
+				Type: astPrint(t.Type, mg.fs),
+			})
+		}
+	}
+	return args
+}
+
 func (mg *Method) Qual(namespace string) string {
 	if namespace != "" {
 		return namespace + "." + mg.Name

@@ -18,7 +18,14 @@ type WrapperGenerator struct {
 	Namespace string
 }
 
-func (wg *WrapperGenerator) Generate(filename string) (jen.Code, error) {
+type generationResult struct {
+	Code        jen.Code
+	Generator   WrapperGenerator
+	Service     *Interface
+	UsedMethods []*Method
+}
+
+func (wg *WrapperGenerator) Generate(filename string) (*generationResult, error) {
 	fs := token.NewFileSet()
 	p, err := parser.ParseFile(fs, filename, nil, parser.ParseComments)
 	if err != nil {
@@ -29,13 +36,18 @@ func (wg *WrapperGenerator) Generate(filename string) (jen.Code, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	return wg.generateFunction(info, fs, p), nil
+	code, methods := wg.generateFunction(info, fs, p)
+	return &generationResult{
+		Code:        code,
+		Generator:   *wg,
+		Service:     info,
+		UsedMethods: methods,
+	}, nil
 }
 
-func (wg *WrapperGenerator) generateFunction(info *Interface, fs *token.FileSet, file *ast.File) jen.Code {
-	return jen.Func().Id(wg.FuncName).Params(jen.Id("router").Op("*").Qual(Import, "Router"), jen.Id("wrap").Id(wg.TypeName)).Index().String().BlockFunc(func(group *jen.Group) {
-		var usedMethods []*Method
+func (wg *WrapperGenerator) generateFunction(info *Interface, fs *token.FileSet, file *ast.File) (jen.Code, []*Method) {
+	var usedMethods []*Method
+	code := jen.Func().Id(wg.FuncName).Params(jen.Id("router").Op("*").Qual(Import, "Router"), jen.Id("wrap").Id(wg.TypeName)).Index().String().BlockFunc(func(group *jen.Group) {
 		for _, method := range info.Methods {
 			if ast.IsExported(method.Name) {
 				group.Id("router").Dot("RegisterFunc").Call(jen.Lit(method.Qual(wg.Namespace)), wg.generateLambda(method, fs, file)).Line()
@@ -48,6 +60,7 @@ func (wg *WrapperGenerator) generateFunction(info *Interface, fs *token.FileSet,
 			}
 		})
 	})
+	return code, usedMethods
 }
 
 func (wg *WrapperGenerator) generateLambda(method *Method, fs *token.FileSet, file *ast.File) jen.Code {

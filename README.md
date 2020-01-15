@@ -54,6 +54,7 @@ Application Options:
       --wrapper=   Wrapper function name. If not defined - Register<interface> name will be used [$WRAPPER]
   -o, --output=    Generated output destination (- means STDOUT) (default: -) [$OUTPUT]
   -p, --package=   Package name (can be override by output dir) (default: events) [$PACKAGE]
+  -d, --doc=       Generate markdown documentation [$DOC]
 
 Help Options:
   -h, --help       Show this help message
@@ -66,9 +67,12 @@ Assume you have an interface file (`user.go`) like this:
 ```go
 package abc
 
+// General user profile access
 type User interface {
+	// Get user profile
 	Profile(token string) (*Profile, error)
 }
+
 ```
 
 Just invoke `jsonrpc2-gen -i user.go -o user_gen.go -I User -p abc`
@@ -105,4 +109,27 @@ func RegisterUser(router *jsonrpc2.Router, wrap User) []string {
 
 	return []string{"User.Profile"}
 }
+```
+
+### Generate documentation
+
+Add `-doc user.md` to generate documentations as described bellow. It will be generated and saved to the provided file (`user.md`) 
+
+```markdown
+# User
+
+General user profile access
+
+
+## User.Profile
+
+Get user profile
+
+* Method: `User.Profile`
+* Returns: `*Profile`
+* Arguments:
+
+| Position | Name | Type |
+|----------|------|------|
+| 0 | token | `string` |
 ```

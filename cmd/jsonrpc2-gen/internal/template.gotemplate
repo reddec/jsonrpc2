@@ -1,0 +1,20 @@
+# {{.Service.Name}}
+
+{{.Service.Comment}}
+{{range $index, $method := .UsedMethods}}
+
+## {{$method.Qual $.Generator.Namespace}}
+
+{{$method.Comment}}
+
+* Method: `{{$method.Qual $.Generator.Namespace}}`
+* Returns: `{{$method.ReturnType}}`
+* Arguments:
+
+| Position | Name | Type |
+|----------|------|------|
+{{- range $index, $arg := $method.Args}}
+| {{$index}} | {{$arg.Name}} | `{{$arg.Type}}` |
+{{- end}}
+
+{{- end}}

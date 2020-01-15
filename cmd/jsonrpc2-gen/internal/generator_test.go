@@ -12,12 +12,12 @@ func ExampleGenerate() {
 		Namespace: "User",
 	}
 
-	code, err := gen.Generate("../../../example/gen.go")
+	result, err := gen.Generate("../../../example/gen.go")
 	if err != nil {
 		panic(err)
 	}
 	f := jen.NewFile("xyz")
-	f.Add(code)
+	f.Add(result.Code)
 	err = f.Render(os.Stdout)
 	if err != nil {
 		panic(err)

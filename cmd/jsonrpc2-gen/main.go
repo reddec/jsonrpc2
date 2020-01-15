@@ -4,6 +4,7 @@ import (
 	"github.com/dave/jennifer/jen"
 	"github.com/jessevdk/go-flags"
 	"github.com/reddec/jsonrpc2/cmd/jsonrpc2-gen/internal"
+	"io/ioutil"
 	"log"
 	"os"
 	"strings"
@@ -18,6 +19,7 @@ type Config struct {
 	Wrapper   string `long:"wrapper" env:"WRAPPER" description:"Wrapper function name. If not defined - Register<interface> name will be used" default:""`
 	Output    string `short:"o" long:"output" env:"OUTPUT" description:"Generated output destination (- means STDOUT)" default:"-"`
 	Package   string `short:"p" long:"package" env:"PACKAGE" description:"Package name (can be override by output dir)" default:"events"`
+	Doc       string `short:"d" long:"doc" env:"DOC" description:"Generate markdown documentation"`
 }
 
 func main() {
@@ -44,11 +46,11 @@ func main() {
 		FuncName:  config.Wrapper,
 		Namespace: config.Namespace,
 	}
-	code, err := ev.Generate(config.File)
+	result, err := ev.Generate(config.File)
 	if err != nil {
 		log.Fatal(err)
 	}
-	out.Add(code)
+	out.Add(result.Code)
 	var output = os.Stdout
 	if config.Output != "-" {
 		output, err = os.Create(config.Output)
@@ -62,5 +64,12 @@ func main() {
 	err = out.Render(output)
 	if err != nil {
 		panic(err)
+	}
+
+	if config.Doc != "" {
+		err = ioutil.WriteFile(config.Doc, []byte(result.GenerateMarkdown()), 0755)
+		if err != nil {
+			panic(err)
+		}
 	}
 }
