@@ -9,12 +9,13 @@
 
 * Method: `{{$method.Qual $.Generator.Namespace}}`
 * Returns: `{{$method.ReturnType}}`
+{{with $method.Args}}
 * Arguments:
 
 | Position | Name | Type |
 |----------|------|------|
-{{- range $index, $arg := $method.Args}}
+{{- range $index, $arg := .}}
 | {{$index}} | {{$arg.Name}} | `{{$arg.Type}}` |
 {{- end}}
-
+{{end}}
 {{- end}}
