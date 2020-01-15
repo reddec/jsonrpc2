@@ -8,12 +8,19 @@ import (
 	"sync"
 )
 
+// Interceptor for each method that will be called. Return error will generate InternalError (-32603) with error as message
+type MethodInterceptorFunc func(method string, request *Request, isPositional bool) error
+
 // Router for JSON-RPC requests.
 //
 // Supports batching.
 type Router struct {
-	methods map[string]Method
-	lock    sync.RWMutex
+	methods     map[string]Method
+	lock        sync.RWMutex
+	methodHooks struct {
+		listeners []MethodInterceptorFunc
+		lock      sync.RWMutex
+	}
 }
 
 // Register method to router to expose over JSON-RPC interface
@@ -57,6 +64,14 @@ func (caller *Router) RegisterNamedOnly(method string, handler interface{}) erro
 	return nil
 }
 
+// Add interceptor for handling all methods invoke. Called in a same thread as method
+func (caller *Router) InterceptMethods(handler MethodInterceptorFunc) *Router {
+	caller.methodHooks.lock.Lock()
+	caller.methodHooks.listeners = append(caller.methodHooks.listeners, handler)
+	caller.methodHooks.lock.Unlock()
+	return caller
+}
+
 // Invoke exposed method using request from stream (as a batch or single)
 func (caller *Router) Invoke(stream io.Reader) (responses []*Response, isBatch bool) {
 	var batch []*Request
@@ -84,8 +99,6 @@ func (caller *Router) Invoke(stream io.Reader) (responses []*Response, isBatch b
 		return
 	}
 	//TODO: global hooks
-	//TODO: per method hook
-
 	var numNotifications = 0
 	for _, invoke := range batch {
 		if invoke.IsNotification() {
@@ -111,6 +124,14 @@ func (caller *Router) Invoke(stream io.Reader) (responses []*Response, isBatch b
 				return
 			}
 			isPositional := len(request.Params) > 0 && request.Params[0] == '['
+
+			// per method hook
+			err = caller.callMethodsInterceptors(request.Method, request, isPositional)
+			if err != nil {
+				responses[i] = request.failed(InternalError, err.Error())
+				return
+			}
+
 			reply, err := invoker.JsonCall(request.Params, isPositional)
 			if err != nil {
 				responses[i] = request.failed(AppError, err.Error())
@@ -131,4 +152,19 @@ func (caller *Router) Invoke(stream io.Reader) (responses []*Response, isBatch b
 		responses = filtered
 	}
 	return
+}
+
+func (caller *Router) callMethodsInterceptors(method string, request *Request, isPositional bool) error {
+	if len(caller.methodHooks.listeners) == 0 {
+		return nil
+	}
+	caller.methodHooks.lock.RLock()
+	defer caller.methodHooks.lock.RUnlock()
+	for _, hook := range caller.methodHooks.listeners {
+		err := hook(method, request, isPositional)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
