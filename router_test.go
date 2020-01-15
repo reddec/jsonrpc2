@@ -466,7 +466,7 @@ func TestRouter_InterceptMethods(t *testing.T) {
 		return
 	}
 	var complete bool
-	router.InterceptMethods(func(ic *InterceptorContext) (i interface{}, err error) {
+	router.InterceptMethods(func(ic *MethodInterceptorContext) (i interface{}, err error) {
 		a, b := ic.Next()
 		complete = true
 		return a, b
@@ -502,7 +502,51 @@ func TestRouter_InterceptMethods(t *testing.T) {
 		t.Error("interceptor not invoked")
 	}
 }
-
+func TestRouter_Intercept(t *testing.T) {
+	router := &Router{}
+	err := router.RegisterPositionalOnly("sum", func(a, b int, c *int) (int, error) {
+		return a + b + *c, nil
+	})
+	if err != nil {
+		t.Error("reg function", err)
+		return
+	}
+	var complete bool
+	router.Intercept(func(gic *GlobalInterceptorContext) (responses []*Response, isBatch bool) {
+		complete = len(gic.Requests) == 1 && !gic.IsBatch
+		return gic.Next()
+	})
+	responses, isBatch := router.Invoke(bytes.NewBufferString(`{
+		"jsonrpc":"2.0",
+		"id": 1,
+		"method":"sum",
+		"params": [1, 2, 3]
+	}`))
+	if isBatch {
+		t.Error("should be not a batch")
+		return
+	}
+	if len(responses) != 1 {
+		t.Errorf("only one response expected but got %v", len(responses))
+		return
+	}
+	if bytes.Compare(responses[0].ID, []byte("1")) != 0 {
+		t.Errorf("unmatched ID: got %v", string(responses[0].ID))
+	}
+	if responses[0].Version != "2.0" {
+		t.Errorf("version is not 2.0: %v", responses[0].Version)
+	}
+	if responses[0].Error != nil {
+		t.Errorf("failed: %+v", responses[0].Error)
+		return
+	}
+	if v, ok := responses[0].Result.(int); !ok || v != 6 {
+		t.Errorf("not matched result: %v", responses[0].Result)
+	}
+	if !complete {
+		t.Error("interceptor not invoked")
+	}
+}
 func TestCustomError(t *testing.T) {
 	router := &Router{}
 	err := router.RegisterPositionalOnly("sum", func(a, b int, c *int) (int, error) {

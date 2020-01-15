@@ -19,6 +19,10 @@ type Router struct {
 		listeners []MethodInterceptorFunc
 		lock      sync.RWMutex
 	}
+	globalHooks struct {
+		listeners []GlobalInterceptorFunc
+		lock      sync.RWMutex
+	}
 }
 
 // Register method to router to expose over JSON-RPC interface
@@ -70,6 +74,14 @@ func (caller *Router) InterceptMethods(handler MethodInterceptorFunc) *Router {
 	return caller
 }
 
+// Add interceptor for handling batch before lookup for methods and execution
+func (caller *Router) Intercept(handler GlobalInterceptorFunc) *Router {
+	caller.globalHooks.lock.Lock()
+	caller.globalHooks.listeners = append(caller.globalHooks.listeners, handler)
+	caller.globalHooks.lock.Unlock()
+	return caller
+}
+
 // Invoke exposed method using request from stream (as a batch or single)
 func (caller *Router) Invoke(stream io.Reader) (responses []*Response, isBatch bool) {
 	var batch []*Request
@@ -96,7 +108,89 @@ func (caller *Router) Invoke(stream io.Reader) (responses []*Response, isBatch b
 		})
 		return
 	}
-	//TODO: global hooks
+	// global hooks
+	return caller.callWithGlobalInterceptors(batch, isBatch)
+}
+
+func (caller *Router) findMethod(name string) (Method, bool) {
+	caller.lock.RLock()
+	invoker, ok := caller.methods[name]
+	caller.lock.RUnlock()
+	return invoker, ok
+}
+
+func (caller *Router) callWithGlobalInterceptors(requests []*Request, isBatch bool) ([]*Response, bool) {
+	caller.globalHooks.lock.RLock()
+	defer caller.globalHooks.lock.RUnlock()
+	gic := &GlobalInterceptorContext{
+		Requests: requests,
+		IsBatch:  isBatch,
+		idx:      0,
+		list:     caller.globalHooks.listeners,
+		caller:   caller,
+	}
+	return gic.Next()
+}
+
+func (caller *Router) callWithMethodsInterceptors(method Method, request *Request, isPositional bool) (interface{}, error) {
+	if len(caller.methodHooks.listeners) == 0 {
+		return method.JsonCall(request.Params, isPositional)
+	}
+	caller.methodHooks.lock.RLock()
+	defer caller.methodHooks.lock.RUnlock()
+	ic := &MethodInterceptorContext{
+		Request:      request,
+		IsPositional: isPositional,
+		list:         caller.methodHooks.listeners,
+		method:       method,
+	}
+	return ic.Next()
+}
+
+// Context handling request per method
+type MethodInterceptorContext struct {
+	Request      *Request
+	IsPositional bool
+	idx          int
+	list         []MethodInterceptorFunc
+	method       Method
+}
+
+// Call next interceptor or final method
+func (ic *MethodInterceptorContext) Next() (interface{}, error) {
+	if ic.idx >= len(ic.list) {
+		return ic.method.JsonCall(ic.Request.Params, ic.IsPositional)
+	}
+	idx := ic.idx
+	ic.idx++
+	return ic.list[idx](ic)
+}
+
+// Interceptor for each method that will be called
+type MethodInterceptorFunc func(ic *MethodInterceptorContext) (interface{}, error)
+
+type GlobalInterceptorFunc func(gic *GlobalInterceptorContext) (responses []*Response, isBatch bool)
+
+type GlobalInterceptorContext struct {
+	Requests []*Request
+	IsBatch  bool
+	idx      int
+	list     []GlobalInterceptorFunc
+	caller   *Router
+}
+
+func (gic *GlobalInterceptorContext) Next() (responses []*Response, isBatch bool) {
+	if gic.idx >= len(gic.list) {
+		return gic.invoke()
+	}
+	idx := gic.idx
+	gic.idx++
+	return gic.list[idx](gic)
+}
+
+func (gic *GlobalInterceptorContext) invoke() (responses []*Response, isBatch bool) {
+	var batch = gic.Requests
+	isBatch = gic.IsBatch
 	var numNotifications = 0
 	for _, invoke := range batch {
 		if invoke.IsNotification() {
@@ -114,9 +208,7 @@ func (caller *Router) Invoke(stream io.Reader) (responses []*Response, isBatch b
 				responses[i] = request.failed(InvalidRequest, "Invalid Request")
 				return
 			}
-			caller.lock.RLock()
-			invoker, ok := caller.methods[request.Method]
-			caller.lock.RUnlock()
+			invoker, ok := gic.caller.findMethod(request.Method)
 			if !ok {
 				responses[i] = request.failed(MethodNotFound, "Method not found")
 				return
@@ -124,7 +216,7 @@ func (caller *Router) Invoke(stream io.Reader) (responses []*Response, isBatch b
 			isPositional := len(request.Params) > 0 && request.Params[0] == '['
 
 			// per method hook
-			reply, err := caller.callWithMethodsInterceptors(invoker, request, isPositional)
+			reply, err := gic.caller.callWithMethodsInterceptors(invoker, request, isPositional)
 			var jsonRpcErr *Error
 			if errors.As(err, &jsonRpcErr) {
 				responses[i] = request.failed(jsonRpcErr.Code, jsonRpcErr.Message)
@@ -149,38 +241,3 @@ func (caller *Router) Invoke(stream io.Reader) (responses []*Response, isBatch b
 	}
 	return
 }
-
-func (caller *Router) callWithMethodsInterceptors(method Method, request *Request, isPositional bool) (interface{}, error) {
-	if len(caller.methodHooks.listeners) == 0 {
-		return method.JsonCall(request.Params, isPositional)
-	}
-	caller.methodHooks.lock.RLock()
-	defer caller.methodHooks.lock.RUnlock()
-	ic := &InterceptorContext{
-		Request:      request,
-		IsPositional: isPositional,
-		list:         caller.methodHooks.listeners,
-		method:       method,
-	}
-	return ic.Next()
-}
-
-type InterceptorContext struct {
-	Request      *Request
-	IsPositional bool
-	idx          int
-	list         []MethodInterceptorFunc
-	method       Method
-}
-
-func (ic *InterceptorContext) Next() (interface{}, error) {
-	if ic.idx >= len(ic.list) {
-		return ic.method.JsonCall(ic.Request.Params, ic.IsPositional)
-	}
-	idx := ic.idx
-	ic.idx++
-	return ic.list[idx](ic)
-}
-
-// Interceptor for each method that will be called
-type MethodInterceptorFunc func(ic *InterceptorContext) (interface{}, error)
