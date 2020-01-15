@@ -456,6 +456,102 @@ func TestHandler(t *testing.T) {
 	}
 }
 
+func TestRouter_InterceptMethods(t *testing.T) {
+	router := &Router{}
+	err := router.RegisterPositionalOnly("sum", func(a, b int, c *int) (int, error) {
+		return a + b + *c, nil
+	})
+	if err != nil {
+		t.Error("reg function", err)
+		return
+	}
+	var complete bool
+	router.InterceptMethods(func(ic *InterceptorContext) (i interface{}, err error) {
+		a, b := ic.Next()
+		complete = true
+		return a, b
+	})
+	responses, isBatch := router.Invoke(bytes.NewBufferString(`{
+		"jsonrpc":"2.0",
+		"id": 1,
+		"method":"sum",
+		"params": [1, 2, 3]
+	}`))
+	if isBatch {
+		t.Error("should be not a batch")
+		return
+	}
+	if len(responses) != 1 {
+		t.Errorf("only one response expected but got %v", len(responses))
+		return
+	}
+	if bytes.Compare(responses[0].ID, []byte("1")) != 0 {
+		t.Errorf("unmatched ID: got %v", string(responses[0].ID))
+	}
+	if responses[0].Version != "2.0" {
+		t.Errorf("version is not 2.0: %v", responses[0].Version)
+	}
+	if responses[0].Error != nil {
+		t.Errorf("failed: %+v", responses[0].Error)
+		return
+	}
+	if v, ok := responses[0].Result.(int); !ok || v != 6 {
+		t.Errorf("not matched result: %v", responses[0].Result)
+	}
+	if !complete {
+		t.Error("interceptor not invoked")
+	}
+}
+
+func TestCustomError(t *testing.T) {
+	router := &Router{}
+	err := router.RegisterPositionalOnly("sum", func(a, b int, c *int) (int, error) {
+		return a + b + *c, &Error{
+			Code:    1234,
+			Message: "Test Error",
+		}
+	})
+	if err != nil {
+		t.Error("reg function", err)
+		return
+	}
+	responses, isBatch := router.Invoke(bytes.NewBufferString(`{
+		"jsonrpc":"2.0",
+		"id": 1,
+		"method":"sum",
+		"params": [1, 2, 3]
+	}`))
+	if isBatch {
+		t.Error("should be not a batch")
+		return
+	}
+	if len(responses) != 1 {
+		t.Errorf("only one response expected but got %v", len(responses))
+		return
+	}
+	if bytes.Compare(responses[0].ID, []byte("1")) != 0 {
+		t.Errorf("unmatched ID: got %v", string(responses[0].ID))
+	}
+	if responses[0].Version != "2.0" {
+		t.Errorf("version is not 2.0: %v", responses[0].Version)
+	}
+	if responses[0].Error == nil {
+		t.Errorf("should be failed but got response: %+v", responses[0].Result)
+		return
+	}
+	if responses[0].Result != nil {
+		t.Errorf("should be empty result but got: %+v", responses[0].Result)
+	}
+	if responses[0].Error.Code != 1234 {
+		t.Errorf("error code should be 1234 but got: %+v", responses[0].Error.Code)
+		return
+	}
+	if responses[0].Error.Message != "Test Error" {
+		t.Errorf("error message unexpectable got: %+v", responses[0].Error.Message)
+		return
+	}
+}
+
 func ExampleRouter_RegisterPositionalOnly() {
 	router := &Router{}
 	err := router.RegisterPositionalOnly("sum", func(a, b int) (int, error) {

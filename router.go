@@ -4,12 +4,10 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"sync"
 )
-
-// Interceptor for each method that will be called. Return error will generate InternalError (-32603) with error as message
-type MethodInterceptorFunc func(method string, request *Request, isPositional bool) error
 
 // Router for JSON-RPC requests.
 //
@@ -126,14 +124,12 @@ func (caller *Router) Invoke(stream io.Reader) (responses []*Response, isBatch b
 			isPositional := len(request.Params) > 0 && request.Params[0] == '['
 
 			// per method hook
-			err = caller.callMethodsInterceptors(request.Method, request, isPositional)
-			if err != nil {
-				responses[i] = request.failed(InternalError, err.Error())
+			reply, err := caller.callWithMethodsInterceptors(invoker, request, isPositional)
+			var jsonRpcErr *Error
+			if errors.As(err, &jsonRpcErr) {
+				responses[i] = request.failed(jsonRpcErr.Code, jsonRpcErr.Message)
 				return
-			}
-
-			reply, err := invoker.JsonCall(request.Params, isPositional)
-			if err != nil {
+			} else if err != nil {
 				responses[i] = request.failed(AppError, err.Error())
 				return
 			}
@@ -154,17 +150,37 @@ func (caller *Router) Invoke(stream io.Reader) (responses []*Response, isBatch b
 	return
 }
 
-func (caller *Router) callMethodsInterceptors(method string, request *Request, isPositional bool) error {
+func (caller *Router) callWithMethodsInterceptors(method Method, request *Request, isPositional bool) (interface{}, error) {
 	if len(caller.methodHooks.listeners) == 0 {
-		return nil
+		return method.JsonCall(request.Params, isPositional)
 	}
 	caller.methodHooks.lock.RLock()
 	defer caller.methodHooks.lock.RUnlock()
-	for _, hook := range caller.methodHooks.listeners {
-		err := hook(method, request, isPositional)
-		if err != nil {
-			return err
-		}
+	ic := &InterceptorContext{
+		Request:      request,
+		IsPositional: isPositional,
+		list:         caller.methodHooks.listeners,
+		method:       method,
 	}
-	return nil
+	return ic.Next()
 }
+
+type InterceptorContext struct {
+	Request      *Request
+	IsPositional bool
+	idx          int
+	list         []MethodInterceptorFunc
+	method       Method
+}
+
+func (ic *InterceptorContext) Next() (interface{}, error) {
+	if ic.idx >= len(ic.list) {
+		return ic.method.JsonCall(ic.Request.Params, ic.IsPositional)
+	}
+	idx := ic.idx
+	ic.idx++
+	return ic.list[idx](ic)
+}
+
+// Interceptor for each method that will be called
+type MethodInterceptorFunc func(ic *InterceptorContext) (interface{}, error)

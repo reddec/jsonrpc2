@@ -65,6 +65,10 @@ type Error struct {
 	Message string `json:"message"`
 }
 
+func (e *Error) Error() string {
+	return fmt.Sprintf("%d: %s", e.Code, e.Message)
+}
+
 // JSON-RPC 2.0 standard response object
 type Response struct {
 	// always 2.0
