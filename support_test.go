@@ -2,6 +2,7 @@ package jsonrpc2
 
 import (
 	"bytes"
+	"encoding/json"
 	"testing"
 )
 
@@ -55,5 +56,45 @@ func TestMaxBatch(t *testing.T) {
 	if responses[0].Error.Message != "batch is too big" {
 		t.Errorf("error message unexpected: got %s", responses[0].Error.Message)
 		return
+	}
+}
+
+func TestToArray(t *testing.T) {
+	var raw json.RawMessage
+	err := json.Unmarshal([]byte("[1, 2, 3]"), &raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	array, err := ToArray(raw, 2)
+	if err == nil {
+		t.Error("should return error if len not matched")
+		return
+	}
+	array, err = ToArray(raw, 3)
+	if err != nil {
+		t.Errorf("unmatched: %v", err)
+		return
+	}
+
+	if len(array) != 3 {
+		t.Errorf("array should 3 but got %v", len(array))
+	}
+}
+
+func TestUnmarshalArray(t *testing.T) {
+	var raw json.RawMessage
+	err := json.Unmarshal([]byte("[1, 2, 3]"), &raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var a, b, c int
+	err = UnmarshalArray(raw, &a, &b, &c)
+	if err != nil {
+		t.Errorf("unmatched: %v", err)
+		return
+	}
+
+	if a != 1 || b != 2 || c != 3 {
+		t.Errorf("got %v, %v, %v", a, b, c)
 	}
 }
