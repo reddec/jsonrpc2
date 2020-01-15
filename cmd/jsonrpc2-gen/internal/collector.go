@@ -50,7 +50,7 @@ func (mg *Method) Args() []arg {
 	return args
 }
 
-func CollectInfo(file *ast.File, fs *token.FileSet) (*Interface, error) {
+func CollectInfo(search string, file *ast.File, fs *token.FileSet) (*Interface, error) {
 	var (
 		name        string
 		comment     string
@@ -67,6 +67,10 @@ func CollectInfo(file *ast.File, fs *token.FileSet) (*Interface, error) {
 				comment = strings.TrimSpace(prevComment)
 				prevComment = ""
 			case *ast.InterfaceType:
+				if name != search {
+					comment = ""
+					return true
+				}
 				srv = &Interface{
 					Name:    name,
 					Comment: comment,
