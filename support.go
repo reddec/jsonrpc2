@@ -59,3 +59,22 @@ func Handler(router *Router) http.HandlerFunc {
 		}
 	}
 }
+
+// Interceptor that limiting maximum number of requests in a batch. If batch size is bigger
+//- InternalError will be returned with description. Only one error response without ID will be generated regardless of batch size
+func MaxBatch(num int) GlobalInterceptorFunc {
+	return func(gic *GlobalInterceptorContext) (responses []*Response, isBatch bool) {
+		if len(gic.Requests) > num {
+			return []*Response{
+				{
+					Version: Version,
+					Error: &Error{
+						Code:    InternalError,
+						Message: "batch is too big",
+					},
+				},
+			}, gic.IsBatch
+		}
+		return gic.Next()
+	}
+}
