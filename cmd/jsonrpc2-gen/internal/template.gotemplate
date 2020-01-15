@@ -3,11 +3,11 @@
 {{.Service.Comment}}
 {{range $index, $method := .UsedMethods}}
 
-## {{$method.Qual $.Generator.Namespace}}
+## {{$.Generator.Qual $method}}
 
 {{$method.Comment}}
 
-* Method: `{{$method.Qual $.Generator.Namespace}}`
+* Method: `{{$.Generator.Qual $method}}`
 * Returns: `{{$method.ReturnType}}`
 {{with $method.Args}}
 * Arguments:

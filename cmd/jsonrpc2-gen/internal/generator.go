@@ -3,6 +3,7 @@ package internal
 import (
 	"bytes"
 	"github.com/dave/jennifer/jen"
+	"github.com/iancoleman/strcase"
 	"go/ast"
 	"go/parser"
 	"go/printer"
@@ -12,10 +13,46 @@ import (
 
 const Import = "github.com/reddec/jsonrpc2"
 
+type Case int
+
+const (
+	Keep Case = iota
+	Camel
+	Pascal
+	Snake
+	Kebab
+)
+
+func (c Case) Convert(text string) string {
+	switch c {
+	case Camel:
+		return strcase.ToLowerCamel(text)
+	case Pascal:
+		return strcase.ToCamel(text)
+	case Snake:
+		return strcase.ToSnake(text)
+	case Kebab:
+		return strcase.ToKebab(text)
+	case Keep:
+		return text
+	default:
+		return text
+	}
+}
+
 type WrapperGenerator struct {
 	TypeName  string
 	FuncName  string
 	Namespace string
+	Case      Case
+}
+
+func (wg *WrapperGenerator) Qual(mg *Method) string {
+	name := wg.Case.Convert(mg.Name)
+	if wg.Namespace != "" {
+		return wg.Namespace + "." + name
+	}
+	return name
 }
 
 type generationResult struct {
@@ -50,13 +87,13 @@ func (wg *WrapperGenerator) generateFunction(info *Interface, fs *token.FileSet,
 	code := jen.Func().Id(wg.FuncName).Params(jen.Id("router").Op("*").Qual(Import, "Router"), jen.Id("wrap").Id(wg.TypeName)).Index().String().BlockFunc(func(group *jen.Group) {
 		for _, method := range info.Methods {
 			if ast.IsExported(method.Name) {
-				group.Id("router").Dot("RegisterFunc").Call(jen.Lit(method.Qual(wg.Namespace)), wg.generateLambda(method, fs, file)).Line()
+				group.Id("router").Dot("RegisterFunc").Call(jen.Lit(wg.Qual(method)), wg.generateLambda(method, fs, file)).Line()
 				usedMethods = append(usedMethods, method)
 			}
 		}
 		group.Return().Index().String().ValuesFunc(func(values *jen.Group) {
 			for _, m := range usedMethods {
-				values.Lit(m.Qual(wg.Namespace))
+				values.Lit(wg.Qual(m))
 			}
 		})
 	})

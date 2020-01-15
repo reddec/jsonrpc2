@@ -20,6 +20,24 @@ type Config struct {
 	Output    string `short:"o" long:"output" env:"OUTPUT" description:"Generated output destination (- means STDOUT)" default:"-"`
 	Package   string `short:"p" long:"package" env:"PACKAGE" description:"Package name (can be override by output dir)" default:"events"`
 	Doc       string `short:"d" long:"doc" env:"DOC" description:"Generate markdown documentation"`
+	Case      string `short:"c" long:"case" env:"CASE" description:"Method name case style" default:"keep" choice:"keep" choice:"camel" choice:"pascal" choice:"snake" choice:"kebab"`
+}
+
+func (c Config) GetCase() internal.Case {
+	switch c.Case {
+	case "camel":
+		return internal.Camel
+	case "pascal":
+		return internal.Pascal
+	case "snake":
+		return internal.Snake
+	case "kebab":
+		return internal.Kebab
+	case "keep":
+		return internal.Keep
+	default:
+		return internal.Keep
+	}
 }
 
 func main() {
@@ -45,6 +63,7 @@ func main() {
 		TypeName:  config.Interface,
 		FuncName:  config.Wrapper,
 		Namespace: config.Namespace,
+		Case:      config.GetCase(),
 	}
 	result, err := ev.Generate(config.File)
 	if err != nil {

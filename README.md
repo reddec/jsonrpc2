@@ -55,6 +55,7 @@ Application Options:
   -o, --output=    Generated output destination (- means STDOUT) (default: -) [$OUTPUT]
   -p, --package=   Package name (can be override by output dir) (default: events) [$PACKAGE]
   -d, --doc=       Generate markdown documentation [$DOC]
+  -c, --case=[keep|camel|pascal|snake|kebab] Method name case style (default: keep) [$CASE]
 
 Help Options:
   -h, --help       Show this help message

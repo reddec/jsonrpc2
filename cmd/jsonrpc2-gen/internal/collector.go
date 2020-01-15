@@ -50,13 +50,6 @@ func (mg *Method) Args() []arg {
 	return args
 }
 
-func (mg *Method) Qual(namespace string) string {
-	if namespace != "" {
-		return namespace + "." + mg.Name
-	}
-	return mg.Name
-}
-
 func CollectInfo(file *ast.File, fs *token.FileSet) (*Interface, error) {
 	var (
 		name        string
