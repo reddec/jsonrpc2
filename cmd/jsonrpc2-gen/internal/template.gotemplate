@@ -18,4 +18,16 @@
 | {{$index}} | {{$arg.Name}} | `{{$arg.Type}}` |
 {{- end}}
 {{end}}
+{{- if $.DocAddr}}
+```bash
+curl -H 'Content-Type: application/json' --data-binary @- "{{$.DocAddr}}" <<EOF
+{
+    "jsonrpc" : "2.0",
+    "id" : 1,
+    "method" : "{{$.Generator.Qual $method}}",
+    "params" : []
+}
+EOF
+```
+{{- end}}
 {{- end}}

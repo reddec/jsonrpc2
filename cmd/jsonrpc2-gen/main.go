@@ -21,6 +21,7 @@ type Config struct {
 	Package   string `short:"p" long:"package" env:"PACKAGE" description:"Package name (can be override by output dir)" default:"events"`
 	Doc       string `short:"d" long:"doc" env:"DOC" description:"Generate markdown documentation"`
 	Case      string `short:"c" long:"case" env:"CASE" description:"Method name case style" default:"keep" choice:"keep" choice:"camel" choice:"pascal" choice:"snake" choice:"kebab"`
+	URL       string `long:"url" env:"URL" description:"URL for examples in documentation" default:"https://example.com/api"`
 }
 
 func (c Config) GetCase() internal.Case {
@@ -86,7 +87,7 @@ func main() {
 	}
 
 	if config.Doc != "" {
-		err = ioutil.WriteFile(config.Doc, []byte(result.GenerateMarkdown()), 0755)
+		err = ioutil.WriteFile(config.Doc, []byte(result.WithDocAddress(config.URL).GenerateMarkdown()), 0755)
 		if err != nil {
 			panic(err)
 		}

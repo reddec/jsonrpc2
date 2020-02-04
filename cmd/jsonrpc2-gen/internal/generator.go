@@ -60,6 +60,7 @@ type generationResult struct {
 	Generator   WrapperGenerator
 	Service     *Interface
 	UsedMethods []*Method
+	DocAddr     string
 }
 
 func (wg *WrapperGenerator) Generate(filename string) (*generationResult, error) {

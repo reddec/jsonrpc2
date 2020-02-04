@@ -15,3 +15,8 @@ func (result *generationResult) GenerateMarkdown() string {
 	}
 	return buffer.String()
 }
+
+func (result *generationResult) WithDocAddress(address string) *generationResult {
+	result.DocAddr = address
+	return result
+}
