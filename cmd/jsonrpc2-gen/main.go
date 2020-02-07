@@ -16,7 +16,7 @@ type Config struct {
 	File      string `short:"i" long:"file" env:"GOFILE" description:"File to scan" required:"yes"`
 	Interface string `short:"I" long:"interface" env:"INTERFACE" description:"Interface to wrap" required:"yes"`
 	Namespace string `long:"namespace" env:"NAMESPACE" description:"Custom namespace for functions. If not defined - interface name will be used" default:""`
-	Wrapper   string `long:"wrapper" env:"WRAPPER" description:"Wrapper function name. If not defined - Register<interface> name will be used" default:""`
+	Wrapper   string `short:"w" long:"wrapper" env:"WRAPPER" description:"Wrapper function name. If not defined - Register<interface> name will be used" default:""`
 	Output    string `short:"o" long:"output" env:"OUTPUT" description:"Generated output destination (- means STDOUT)" default:"-"`
 	Package   string `short:"p" long:"package" env:"PACKAGE" description:"Package name (can be override by output dir)" default:"events"`
 	Doc       string `short:"d" long:"doc" env:"DOC" description:"Generate markdown documentation"`
@@ -58,7 +58,6 @@ func main() {
 	}
 
 	var out *jen.File
-	out = jen.NewFile(config.Package)
 
 	ev := internal.WrapperGenerator{
 		TypeName:  config.Interface,
@@ -69,6 +68,12 @@ func main() {
 	result, err := ev.Generate(config.File)
 	if err != nil {
 		log.Fatal(err)
+	}
+	if config.Output != "-" {
+		pkgImport, _ := internal.FindPackage(config.Output)
+		out = jen.NewFilePathName(pkgImport, config.Package)
+	} else {
+		out = jen.NewFile(config.Package)
 	}
 	out.Add(result.Code)
 	var output = os.Stdout

@@ -2,12 +2,14 @@ package internal
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/dave/jennifer/jen"
 	"github.com/iancoleman/strcase"
 	"go/ast"
 	"go/parser"
 	"go/printer"
 	"go/token"
+	"path/filepath"
 	"strconv"
 )
 
@@ -60,10 +62,15 @@ type generationResult struct {
 	Generator   WrapperGenerator
 	Service     *Interface
 	UsedMethods []*Method
+	Import      string
 	DocAddr     string
 }
 
 func (wg *WrapperGenerator) Generate(filename string) (*generationResult, error) {
+	importPath, err := FindPackage(filepath.Dir(filename))
+	if err != nil {
+		return nil, fmt.Errorf("detect package for source file %s: %v", filename, err)
+	}
 	fs := token.NewFileSet()
 	p, err := parser.ParseFile(fs, filename, nil, parser.ParseComments)
 	if err != nil {
@@ -74,18 +81,23 @@ func (wg *WrapperGenerator) Generate(filename string) (*generationResult, error)
 	if err != nil {
 		return nil, err
 	}
-	code, methods := wg.generateFunction(info, fs, p)
+	code, methods := wg.generateFunction(info, fs, p, importPath)
 	return &generationResult{
 		Code:        code,
 		Generator:   *wg,
 		Service:     info,
+		Import:      importPath,
 		UsedMethods: methods,
 	}, nil
 }
 
-func (wg *WrapperGenerator) generateFunction(info *Interface, fs *token.FileSet, file *ast.File) (jen.Code, []*Method) {
+func (wg *WrapperGenerator) generateFunction(info *Interface, fs *token.FileSet, file *ast.File, importPath string) (jen.Code, []*Method) {
+	qual := jen.Id(wg.TypeName)
+	if importPath != "" {
+		qual = jen.Qual(importPath, wg.TypeName)
+	}
 	var usedMethods []*Method
-	code := jen.Func().Id(wg.FuncName).Params(jen.Id("router").Op("*").Qual(Import, "Router"), jen.Id("wrap").Id(wg.TypeName)).Index().String().BlockFunc(func(group *jen.Group) {
+	code := jen.Func().Id(wg.FuncName).Params(jen.Id("router").Op("*").Qual(Import, "Router"), jen.Id("wrap").Add(qual)).Index().String().BlockFunc(func(group *jen.Group) {
 		for _, method := range info.Methods {
 			if ast.IsExported(method.Name) {
 				group.Id("router").Dot("RegisterFunc").Call(jen.Lit(wg.Qual(method)), wg.generateLambda(method, fs, file)).Line()
