@@ -66,9 +66,12 @@ type arg struct {
 	Ops    string
 }
 
-func (a arg) Qual() jen.Code {
+func (a arg) Qual(parentImportPath string) jen.Code {
 	if a.Import == "" {
-		return jen.Op(a.Ops).Id(a.Type)
+		if parentImportPath == "" || !ast.IsExported(a.Type) {
+			return jen.Op(a.Ops).Id(a.Type)
+		}
+		return jen.Op(a.Ops).Qual(parentImportPath, a.Type)
 	}
 	return jen.Op(a.Ops).Qual(a.Import, a.Type)
 }

@@ -100,7 +100,7 @@ func (wg *WrapperGenerator) generateFunction(info *Interface, fs *token.FileSet,
 	code := jen.Func().Id(wg.FuncName).Params(jen.Id("router").Op("*").Qual(Import, "Router"), jen.Id("wrap").Add(qual)).Index().String().BlockFunc(func(group *jen.Group) {
 		for _, method := range info.Methods {
 			if ast.IsExported(method.Name) {
-				group.Id("router").Dot("RegisterFunc").Call(jen.Lit(wg.Qual(method)), wg.generateLambda(method, fs, file)).Line()
+				group.Id("router").Dot("RegisterFunc").Call(jen.Lit(wg.Qual(method)), wg.generateLambda(method, fs, file, importPath)).Line()
 				usedMethods = append(usedMethods, method)
 			}
 		}
@@ -113,7 +113,7 @@ func (wg *WrapperGenerator) generateFunction(info *Interface, fs *token.FileSet,
 	return code, usedMethods
 }
 
-func (wg *WrapperGenerator) generateLambda(method *Method, fs *token.FileSet, file *ast.File) jen.Code {
+func (wg *WrapperGenerator) generateLambda(method *Method, fs *token.FileSet, file *ast.File, importPath string) jen.Code {
 	return jen.Func().Params(jen.Id("params").Qual("encoding/json", "RawMessage"), jen.Id("positional").Bool()).Call(jen.Interface(), jen.Error()).BlockFunc(func(group *jen.Group) {
 		var argNames []string
 		if method.Type.Params != nil && len(method.Type.Params.List) > 0 {
@@ -121,7 +121,7 @@ func (wg *WrapperGenerator) generateLambda(method *Method, fs *token.FileSet, fi
 				for _, arg := range method.Args() {
 					name := "Arg" + strconv.Itoa(len(argNames))
 					argNames = append(argNames, name)
-					st.Id(name).Add(arg.Qual()).Tag(map[string]string{
+					st.Id(name).Add(arg.Qual(importPath)).Tag(map[string]string{
 						"json": arg.Name,
 					})
 				}
