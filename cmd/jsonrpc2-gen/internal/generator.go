@@ -106,15 +106,12 @@ func (wg *WrapperGenerator) generateLambda(method *Method, fs *token.FileSet, fi
 		var argNames []string
 		if method.Type.Params != nil && len(method.Type.Params.List) > 0 {
 			group.Var().Id("args").StructFunc(func(st *jen.Group) {
-				argNames = make([]string, 0, len(method.Type.Params.List))
-				for _, arg := range method.Type.Params.List {
-					for _, argName := range arg.Names {
-						name := "Arg" + strconv.Itoa(len(argNames))
-						argNames = append(argNames, name)
-						st.Id(name).Id(astPrint(arg.Type, fs)).Tag(map[string]string{
-							"json": argName.Name,
-						})
-					}
+				for _, arg := range method.Args() {
+					name := "Arg" + strconv.Itoa(len(argNames))
+					argNames = append(argNames, name)
+					st.Id(name).Add(arg.Qual()).Tag(map[string]string{
+						"json": arg.Name,
+					})
 				}
 			})
 
