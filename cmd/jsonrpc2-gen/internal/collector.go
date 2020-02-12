@@ -4,11 +4,14 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/dave/jennifer/jen"
+	"github.com/reddec/godetector"
 	"go/ast"
+	"go/parser"
 	"go/token"
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -59,11 +62,78 @@ func (mg *Method) ReturnType() string {
 	return astPrint(mg.Type.Results.List[0].Type, mg.fs)
 }
 
-type arg struct {
-	Name   string
+func (mg *Method) LocalTypes(parentImportPath string) []LocalType {
+	var types = map[string]bool{}
+	for _, arg := range mg.Args() {
+		if arg.Import == "" && ast.IsExported(arg.Type) {
+			types[arg.Type] = true
+		}
+	}
+	retType := mg.Return()
+	if retType.Import == "" && ast.IsExported(retType.Type) {
+		types[retType.Type] = true
+	}
+
+	packDir, err := godetector.FindPackageDefinitionDir(parentImportPath, ".")
+	if err != nil {
+		log.Println("failed detect package", parentImportPath, "location:", err)
+		return nil
+	}
+
+	var fs token.FileSet
+	parsed, err := parser.ParseDir(&fs, packDir, nil, parser.AllErrors)
+	if err != nil || len(parsed) == 0 {
+		log.Println("failed parse package", parentImportPath, ":", err)
+		return nil
+	}
+
+	var pkg *ast.Package
+	for _, p := range parsed {
+		pkg = p
+		break
+	}
+	if pkg == nil {
+		panic("WTF?")
+	}
+	var ans = make([]LocalType, 0, len(types))
+	for typeName := range types {
+		for _, file := range pkg.Files {
+			for _, def := range file.Decls {
+				ast.Inspect(def, func(node ast.Node) bool {
+					switch v := node.(type) {
+					case *ast.TypeSpec:
+						if v.Name != nil && v.Name.Name == typeName {
+							definition := astPrint(v, &fs)
+							ans = append(ans, LocalType{
+								Type:       typeName,
+								Definition: definition,
+							})
+							return false
+						}
+					}
+					return true
+				})
+			}
+		}
+	}
+	sort.Slice(ans, func(i, j int) bool {
+		return ans[i].Type < ans[j].Type
+	})
+	return ans
+}
+
+type LocalType struct {
+	Type       string
+	Definition string
+}
+type typed struct {
 	Type   string
 	Import string
 	Ops    string
+}
+type arg struct {
+	Name string
+	typed
 }
 
 func (a arg) Qual(parentImportPath string) jen.Code {
@@ -86,14 +156,29 @@ func (mg *Method) Args() []arg {
 
 		for _, name := range t.Names {
 			args = append(args, arg{
-				Name:   name.Name,
-				Ops:    rebuildOps(t.Type),
-				Type:   rebuildTypeNameWithoutPackage(t.Type),
-				Import: importPath,
+				Name: name.Name,
+				typed: typed{
+					Ops:    rebuildOps(t.Type),
+					Type:   rebuildTypeNameWithoutPackage(t.Type),
+					Import: importPath,
+				},
 			})
 		}
 	}
 	return args
+}
+
+func (mg *Method) Return() typed {
+	if mg.Type.Results == nil || len(mg.Type.Results.List) == 0 {
+		return typed{}
+	}
+	retType := mg.Type.Results.List[0].Type
+	var importPath = mg.Interface.LookupForImport(detectPackageInType(retType))
+	return typed{
+		Ops:    rebuildOps(retType),
+		Type:   rebuildTypeNameWithoutPackage(retType),
+		Import: importPath,
+	}
 }
 
 func detectPackageInType(t ast.Expr) string {

@@ -30,4 +30,13 @@ curl -H 'Content-Type: application/json' --data-binary @- "{{$.DocAddr}}" <<EOF
 EOF
 ```
 {{- end}}
+
+{{- range $index, $localType := $method.LocalTypes $.Import}}
+### {{$localType.Type}}
+```go
+type {{$localType.Definition}}
+```
+{{- end}}
+
+
 {{- end}}
