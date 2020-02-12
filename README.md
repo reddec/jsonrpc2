@@ -48,17 +48,20 @@ Author: Baryshnikov Aleksandr <dev@baryshnikov.net>
 Version: dev
 
 Application Options:
-  -i, --file=      File to scan [$GOFILE]
-  -I, --interface= Interface to wrap [$INTERFACE]
-      --namespace= Custom namespace for functions. If not defined - interface name will be used [$NAMESPACE]
-      --wrapper=   Wrapper function name. If not defined - Register<interface> name will be used [$WRAPPER]
-  -o, --output=    Generated output destination (- means STDOUT) (default: -) [$OUTPUT]
-  -p, --package=   Package name (can be override by output dir) (default: events) [$PACKAGE]
-  -d, --doc=       Generate markdown documentation [$DOC]
+  -i, --file=                                File to scan [$GOFILE]
+  -I, --interface=                           Interface to wrap [$INTERFACE]
+      --namespace=                           Custom namespace for functions. If not defined - interface name will be used [$NAMESPACE]
+  -w, --wrapper=                             Wrapper function name. If not defined - Register<interface> name will be used [$WRAPPER]
+  -o, --output=                              Generated output destination (- means STDOUT) (default: -) [$OUTPUT]
+  -p, --package=                             Package name (can be override by output dir) (default: events) [$PACKAGE]
+  -d, --doc=                                 Generate markdown documentation [$DOC]
   -c, --case=[keep|camel|pascal|snake|kebab] Method name case style (default: keep) [$CASE]
+      --url=                                 URL for examples in documentation (default: https://example.com/api) [$URL]
+  -C, --interceptor                          add interceptor for each method [$INTERCEPTOR]
 
 Help Options:
-  -h, --help       Show this help message
+  -h, --help                                 Show this help message
+
 ```
 
 ## Example

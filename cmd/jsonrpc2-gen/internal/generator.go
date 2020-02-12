@@ -43,10 +43,11 @@ func (c Case) Convert(text string) string {
 }
 
 type WrapperGenerator struct {
-	TypeName  string
-	FuncName  string
-	Namespace string
-	Case      Case
+	TypeName    string
+	FuncName    string
+	Namespace   string
+	Case        Case
+	Interceptor bool
 }
 
 func (wg *WrapperGenerator) Qual(mg *Method) string {
@@ -97,7 +98,13 @@ func (wg *WrapperGenerator) generateFunction(info *Interface, fs *token.FileSet,
 		qual = jen.Qual(importPath, wg.TypeName)
 	}
 	var usedMethods []*Method
-	code := jen.Func().Id(wg.FuncName).Params(jen.Id("router").Op("*").Qual(Import, "Router"), jen.Id("wrap").Add(qual)).Index().String().BlockFunc(func(group *jen.Group) {
+	code := jen.Func().Id(wg.FuncName).ParamsFunc(func(params *jen.Group) {
+		params.Id("router").Op("*").Qual(Import, "Router")
+		params.Id("wrap").Add(qual)
+		if wg.Interceptor {
+			params.Id("interceptor").Func().Params(jen.Id("methodName").String(), jen.Id("params").Index().Interface()).Error()
+		}
+	}).Index().String().BlockFunc(func(group *jen.Group) {
 		for _, method := range info.Methods {
 			if ast.IsExported(method.Name) {
 				group.Id("router").Dot("RegisterFunc").Call(jen.Lit(wg.Qual(method)), wg.generateLambda(method, fs, file, importPath)).Line()
@@ -139,6 +146,15 @@ func (wg *WrapperGenerator) generateLambda(method *Method, fs *token.FileSet, fi
 				named.Err().Op("=").Qual("encoding/json", "Unmarshal").Call(jen.Id("params"), jen.Op("&").Id("args"))
 			})
 			group.If().Err().Op("!=").Nil().BlockFunc(func(failed *jen.Group) {
+				failed.Return(jen.Nil(), jen.Err())
+			})
+		}
+		if wg.Interceptor {
+			group.If(jen.Err().Op(":=").Id("interceptor").Call(jen.Lit(wg.Qual(method)), jen.Index().Interface().ValuesFunc(func(params *jen.Group) {
+				for _, arg := range argNames {
+					params.Id("args").Dot(arg)
+				}
+			})), jen.Err().Op("!=").Nil()).BlockFunc(func(failed *jen.Group) {
 				failed.Return(jen.Nil(), jen.Err())
 			})
 		}
