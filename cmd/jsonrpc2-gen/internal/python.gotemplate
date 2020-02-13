@@ -1,0 +1,32 @@
+import requests
+
+class {{.Service.Name}}:
+    """
+    {{.Service.Comment}}
+    """
+
+    def __init__(self, base_url = '{{.DocAddr}}'):
+        self.__url = base_url
+        self.__id = 1
+
+    def __next_id(self):
+        self.__id += 1
+        return self.__id
+
+{{range $index, $method := .UsedMethods}}
+    def {{$method.Name}}(self{{- range $index, $arg := $method.Args}}, {{$arg.Name}}{{end}}):
+        """
+        {{$method.Comment}}
+        """
+        response = requests.post(self.__url, json={
+            "jsonrpc" : "2.0",
+            "method" : "{{$.Generator.Qual $method}}",
+            "id" : self.__next_id(),
+            "params" : [{{- range $index, $arg := $method.Args}}{{$arg.Name}}, {{end}}]
+            })
+        assert response.ok
+        payload = response.json()
+        assert 'error' not in payload, Exception(payload['error'])
+        return payload['result']
+
+{{end}}

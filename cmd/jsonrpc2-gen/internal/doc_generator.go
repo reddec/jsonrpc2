@@ -5,7 +5,7 @@ import (
 	"text/template"
 )
 
-//go:generate go-bindata -pkg internal template.gotemplate
+//go:generate go-bindata -pkg internal template.gotemplate python.gotemplate
 func (result *generationResult) GenerateMarkdown() string {
 	t := template.Must(template.New("").Parse(string(MustAsset("template.gotemplate"))))
 	buffer := &bytes.Buffer{}
