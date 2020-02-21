@@ -31,7 +31,6 @@ jobs:
     - name: Upload to bintray
       env:
         UPLOAD_BINTRAY_PASSWORD: ${{ secrets.UPLOAD_BINTRAY_PASSWORD }}
-        DISTRIBUTION: "trusty,xenial,bionic,buster,wheezy"
         USERNAME: reddec
         PROJECT: "jsonrpc2"
       run: |
