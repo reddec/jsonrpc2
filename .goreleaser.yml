@@ -21,7 +21,7 @@ builds:
     - -trimpath
 nfpms:
   - id: debian
-    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
+    file_name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
     replacements:
       Linux: linux
       386: i386
@@ -34,12 +34,12 @@ nfpms:
 uploads:
   - name: bintray
     method: PUT
-    ids:
-      - debian
     mode: archive
     username: reddec
     custom_artifact_name: true
-    target: 'https://api.bintray.com/content/reddec/debian/{{ .ProjectName }}/{{ .Version }}/{{ .ArtifactName }};publish=1;deb_component=main;deb_distribution=all'
+    ids:
+      - debian
+    target: 'https://api.bintray.com/content/reddec/debian/{{ .ProjectName }}/{{ .Version }}/{{ .ArtifactName }};publish=1;deb_component=main;deb_distribution=all;deb_architecture={{ .Goarch }}'
 archives:
 - replacements:
     Linux: linux
@@ -51,6 +51,8 @@ archives:
   format: tar.gz
 checksum:
   name_template: 'checksums.txt'
+release:
+  disable: yes
 snapshot:
   name_template: "{{ .Tag }}-next"
 changelog:
