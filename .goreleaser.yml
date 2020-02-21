@@ -20,7 +20,7 @@ builds:
   flags:
     - -trimpath
 nfpms:
-  - name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
+  - name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
     replacements:
       Linux: linux
       386: i386
@@ -30,6 +30,12 @@ nfpms:
     license: Mozilla Public License Version 2.0
     formats:
       - deb
+uploads:
+  - name: bintray
+    method: PUT
+    username: reddec
+    custom_artifact_name: true
+    target: "https://api.bintray.com/content/reddec/debian/{{ .ProjectName }}/{{ .Version }}/{{ .ArtifactName }};publish=1;deb_component=main;deb_distribution=all"
 archives:
 - replacements:
     Linux: linux
