@@ -16,7 +16,6 @@ builds:
     - linux
     - windows
     - darwin
-    - freebsd
   flags:
     - -trimpath
 nfpms:
@@ -39,7 +38,7 @@ uploads:
     custom_artifact_name: true
     ids:
       - debian
-    target: 'https://api.bintray.com/content/reddec/debian/{{ .ProjectName }}/{{ .Version }}/{{ .ArtifactName }};publish=1;deb_component=main;deb_distribution=all;deb_architecture={{ .Goarch }}'
+    target: 'https://api.bintray.com/content/reddec/debian/{{ .ProjectName }}/{{ .Version }}/{{ .ArtifactName }};publish=1;deb_component=main;deb_distribution=all;deb_architecture={{ .Arch }}'
 archives:
 - replacements:
     Linux: linux
@@ -51,8 +50,6 @@ archives:
   format: tar.gz
 checksum:
   name_template: 'checksums.txt'
-release:
-  disable: yes
 snapshot:
   name_template: "{{ .Tag }}-next"
 changelog:

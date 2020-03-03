@@ -15,7 +15,7 @@
 | Position | Name | Type |
 |----------|------|------|
 {{- range $index, $arg := .}}
-| {{$index}} | {{$arg.Name}} | `{{$arg.Type}}` |
+| {{$index}} | {{$arg.Name}} | `{{$arg.Ops}}{{$arg.Type}}` |
 {{- end}}
 {{end}}
 {{- if $.DocAddr}}
