@@ -186,6 +186,8 @@ func detectPackageInType(t ast.Expr) string {
 		return acc.X.(*ast.Ident).Name
 	} else if ptr, ok := t.(*ast.StarExpr); ok {
 		return detectPackageInType(ptr.X)
+	} else if arr, ok := t.(*ast.ArrayType); ok {
+		return detectPackageInType(arr.Elt)
 	}
 	return ""
 }
@@ -193,6 +195,9 @@ func detectPackageInType(t ast.Expr) string {
 func rebuildOps(t ast.Expr) string {
 	if ptr, ok := t.(*ast.StarExpr); ok {
 		return "*" + rebuildOps(ptr.X)
+	}
+	if arr, ok := t.(*ast.ArrayType); ok {
+		return "[]" + rebuildOps(arr.Elt)
 	}
 	return ""
 }
@@ -206,6 +211,9 @@ func rebuildTypeNameWithoutPackage(t ast.Expr) string {
 	}
 	if acc, ok := t.(*ast.SelectorExpr); ok {
 		return acc.Sel.Name
+	}
+	if arr, ok := t.(*ast.ArrayType); ok {
+		return rebuildTypeNameWithoutPackage(arr.Elt)
 	}
 	return ""
 }

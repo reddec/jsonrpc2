@@ -52,7 +52,23 @@ func ExampleGenerate() {
 	//		return wrap.Profile(args.Arg0, args.Arg1, args.Arg2)
 	//	})
 	//
-	//	return []string{"User.Profile"}
+	//	router.RegisterFunc("User.Latest", func(params json.RawMessage, positional bool) (interface{}, error) {
+	//		var args struct {
+	//			Arg0 []*time.Time `json:"times"`
+	//		}
+	//		var err error
+	//		if positional {
+	//			err = jsonrpc2.UnmarshalArray(params, &args.Arg0)
+	//		} else {
+	//			err = json.Unmarshal(params, &args)
+	//		}
+	//		if err != nil {
+	//			return nil, err
+	//		}
+	//		return wrap.Latest(args.Arg0)
+	//	})
+	//
+	//	return []string{"User.Profile", "User.Latest"}
 	//}
 
 }

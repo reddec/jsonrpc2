@@ -13,4 +13,5 @@ type User interface {
 	// Get user profile
 	Profile(token string, at time.Time, val *bg.Int) (*Profile, error)
 	privateSum(a, b int) (int, error)
+	Latest(times []*time.Time) (time.Time, error)
 }
