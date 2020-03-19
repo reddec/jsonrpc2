@@ -38,9 +38,17 @@ EOF
 
 {{- range $index, $localType := $method.LocalTypes $.Import}}
 ### {{$localType.Type}}
+{{if $localType.IsStruct}}
+| Json | Type | Comment |
+|------|------|---------|
+{{- range $localType.StructFields}}
+| {{.Tag}} | `{{.Type}}` | {{.Comment | firstLine }} |
+{{- end}}
+{{- else}}
 ```go
 type {{$localType.Definition}}
 ```
+{{- end}}
 {{- end}}
 
 

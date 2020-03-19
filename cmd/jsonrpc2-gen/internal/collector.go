@@ -88,9 +88,12 @@ func (mg *Method) LocalTypes(parentImportPath string) []LocalType {
 			continue
 		}
 		definition.removeJSONIgnoredFields()
+		fields := definition.structFields()
 		ans = append(ans, LocalType{
-			Type:       definition.TypeName,
-			Definition: astPrint(definition.Type, definition.FS),
+			Type:         definition.TypeName,
+			Definition:   astPrint(definition.Type, definition.FS),
+			IsStruct:     definition.isStruct() && len(fields) > 0,
+			StructFields: fields,
 		})
 	}
 	sort.Slice(ans, func(i, j int) bool {
@@ -99,9 +102,18 @@ func (mg *Method) LocalTypes(parentImportPath string) []LocalType {
 	return ans
 }
 
+type stField struct {
+	Name    string
+	Type    string
+	Tag     string
+	Comment string
+}
+
 type LocalType struct {
-	Type       string
-	Definition string
+	Type         string
+	Definition   string
+	IsStruct     bool
+	StructFields []*stField
 }
 type typed struct {
 	Type   string
@@ -219,6 +231,55 @@ func findDefinitionFromAst(typeName, alias string, file *ast.File, fileDir strin
 		}
 	}
 	return nil
+}
+
+func (def *Definition) isStruct() bool {
+	_, ok := def.Type.Type.(*ast.StructType)
+	return ok
+}
+
+func (def *Definition) structFields() []*stField {
+	st, ok := def.Type.Type.(*ast.StructType)
+	if !ok {
+		return nil
+	}
+	if st.Fields == nil || len(st.Fields.List) == 0 {
+		return nil
+	}
+	var ans []*stField
+	for _, field := range st.Fields.List {
+		if len(field.Names) == 0 {
+			continue
+		}
+		var comment string
+		if field.Comment != nil {
+			comment = field.Comment.Text()
+		}
+		f := &stField{
+			Name:    field.Names[0].Name,
+			Tag:     field.Names[0].Name,
+			Type:    astPrint(field.Type, def.FS),
+			Comment: comment,
+		}
+		ans = append(ans, f)
+		if field.Tag == nil {
+			continue
+		}
+		s := field.Tag.Value
+		s = s[1 : len(s)-1]
+		val, err := structtag.Parse(s)
+		if err != nil {
+			log.Println("failed parse tags:", err)
+			continue
+		}
+
+		if jsTag, err := val.Get("json"); err == nil && jsTag != nil {
+			if jsTag.Value() != "-" {
+				f.Tag = jsTag.Value()
+			}
+		}
+	}
+	return ans
 }
 
 func (def *Definition) removeJSONIgnoredFields() {
