@@ -1,6 +1,11 @@
 # {{.Service.Name}}
 
 {{.Service.Comment}}
+
+{{range $index, $method := .UsedMethods}}
+* [{{$.Generator.Qual $method}}](#{{$.Generator.Qual $method | lower | replace "." "" | snakecase}}) - {{$method.Comment | firstLine}}
+{{- end}}
+
 {{range $index, $method := .UsedMethods}}
 
 ## {{$.Generator.Qual $method}}

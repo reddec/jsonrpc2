@@ -4,10 +4,12 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/dave/jennifer/jen"
+	"github.com/fatih/structtag"
 	"github.com/reddec/godetector"
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"go/types"
 	"log"
 	"os"
 	"path/filepath"
@@ -52,6 +54,8 @@ type Method struct {
 	Type       *ast.FuncType
 	Interface  *Interface
 	fs         *token.FileSet
+	file       *ast.File
+	fileName   string
 }
 
 func (mg *Method) Comment() string {
@@ -63,58 +67,31 @@ func (mg *Method) ReturnType() string {
 }
 
 func (mg *Method) LocalTypes(parentImportPath string) []LocalType {
-	var types = map[string]bool{}
+	var usedTypes = map[string]typed{}
+	// collect types from arguments
 	for _, arg := range mg.Args() {
-		if arg.Import == "" && ast.IsExported(arg.Type) {
-			types[arg.Type] = true
+		if !isBuiltin(arg.Type) {
+			usedTypes[arg.localQual()] = arg.typed
 		}
 	}
+	// do not forget return type
 	retType := mg.Return()
-	if retType.Import == "" && ast.IsExported(retType.Type) {
-		types[retType.Type] = true
+	if !isBuiltin(retType.Type) {
+		usedTypes[retType.localQual()] = retType
 	}
 
-	packDir, err := godetector.FindPackageDefinitionDir(parentImportPath, ".")
-	if err != nil {
-		log.Println("failed detect package", parentImportPath, "location:", err)
-		return nil
-	}
-
-	var fs token.FileSet
-	parsed, err := parser.ParseDir(&fs, packDir, nil, parser.AllErrors)
-	if err != nil || len(parsed) == 0 {
-		log.Println("failed parse package", parentImportPath, ":", err)
-		return nil
-	}
-
-	var pkg *ast.Package
-	for _, p := range parsed {
-		pkg = p
-		break
-	}
-	if pkg == nil {
-		panic("WTF?")
-	}
-	var ans = make([]LocalType, 0, len(types))
-	for typeName := range types {
-		for _, file := range pkg.Files {
-			for _, def := range file.Decls {
-				ast.Inspect(def, func(node ast.Node) bool {
-					switch v := node.(type) {
-					case *ast.TypeSpec:
-						if v.Name != nil && v.Name.Name == typeName {
-							definition := astPrint(v, &fs)
-							ans = append(ans, LocalType{
-								Type:       typeName,
-								Definition: definition,
-							})
-							return false
-						}
-					}
-					return true
-				})
-			}
+	// collect types definitions
+	var ans = make([]LocalType, 0, len(usedTypes))
+	for _, typeDef := range usedTypes {
+		definition := findDefinitionFromAst(typeDef.Type, typeDef.Alias, mg.file, filepath.Dir(mg.fileName))
+		if definition == nil {
+			continue
 		}
+		definition.removeJSONIgnoredFields()
+		ans = append(ans, LocalType{
+			Type:       definition.TypeName,
+			Definition: astPrint(definition.Type, definition.FS),
+		})
 	}
 	sort.Slice(ans, func(i, j int) bool {
 		return ans[i].Type < ans[j].Type
@@ -129,8 +106,14 @@ type LocalType struct {
 type typed struct {
 	Type   string
 	Import string
+	Alias  string
 	Ops    string
 }
+
+func (a typed) localQual() string {
+	return a.Import + "@" + a.Type
+}
+
 type arg struct {
 	Name string
 	typed
@@ -152,8 +135,8 @@ func (mg *Method) Args() []arg {
 	}
 	var args []arg
 	for _, t := range mg.Type.Params.List {
-		var importPath = mg.Interface.LookupForImport(detectPackageInType(t.Type))
-
+		alias := detectPackageInType(t.Type)
+		var importPath = mg.Interface.LookupForImport(alias)
 		for _, name := range t.Names {
 			args = append(args, arg{
 				Name: name.Name,
@@ -161,6 +144,7 @@ func (mg *Method) Args() []arg {
 					Ops:    rebuildOps(t.Type),
 					Type:   rebuildTypeNameWithoutPackage(t.Type),
 					Import: importPath,
+					Alias:  alias,
 				},
 			})
 		}
@@ -173,12 +157,99 @@ func (mg *Method) Return() typed {
 		return typed{}
 	}
 	retType := mg.Type.Results.List[0].Type
-	var importPath = mg.Interface.LookupForImport(detectPackageInType(retType))
+	alias := detectPackageInType(retType)
+	var importPath = mg.Interface.LookupForImport(alias)
 	return typed{
 		Ops:    rebuildOps(retType),
 		Type:   rebuildTypeNameWithoutPackage(retType),
 		Import: importPath,
+		Alias:  alias,
 	}
+}
+
+type Definition struct {
+	Import   godetector.Import
+	Decl     *ast.GenDecl
+	Type     *ast.TypeSpec
+	TypeName string
+	FS       *token.FileSet
+}
+
+func findDefinitionFromAst(typeName, alias string, file *ast.File, fileDir string) *Definition {
+	var importDef godetector.Import
+	if alias != "" {
+		v, err := godetector.ResolveImport(alias, file, fileDir)
+		if err != nil {
+			log.Println("failed resolve import for", alias, ":", err)
+			return nil
+		}
+		importDef = *v
+	} else {
+		v, err := godetector.InspectImportByDir(fileDir)
+		if err != nil {
+			log.Println("failed inspect", fileDir, ":", err)
+			return nil
+		}
+		importDef = *v
+	}
+
+	var fs token.FileSet
+	importFile, err := parser.ParseDir(&fs, importDef.Location, nil, parser.AllErrors)
+	if err != nil {
+		log.Println("failed parse", importDef.Location, ":", err)
+		return nil
+	}
+	for _, packageDefintion := range importFile {
+		for _, packageFile := range packageDefintion.Files {
+			for _, decl := range packageFile.Decls {
+				if v, ok := decl.(*ast.GenDecl); ok && v.Tok == token.TYPE {
+					for _, spec := range v.Specs {
+						if st, ok := spec.(*ast.TypeSpec); ok && st.Name.Name == typeName {
+							return &Definition{
+								Import:   importDef,
+								Decl:     v,
+								Type:     st,
+								FS:       &fs,
+								TypeName: typeName,
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func (def *Definition) removeJSONIgnoredFields() {
+	st, ok := def.Type.Type.(*ast.StructType)
+	if !ok {
+		return
+	}
+	if st.Fields == nil || len(st.Fields.List) == 0 {
+		return
+	}
+	var filtered []*ast.Field
+	for _, field := range st.Fields.List {
+		filtered = append(filtered, field)
+		if field.Tag == nil {
+			continue
+		}
+		s := field.Tag.Value
+		s = s[1 : len(s)-1]
+		val, err := structtag.Parse(s)
+		if err != nil {
+			log.Println("failed parse tags:", err)
+			continue
+		}
+
+		if jsTag, err := val.Get("json"); err == nil && jsTag != nil {
+			if jsTag.Value() == "-" {
+				filtered = filtered[:len(filtered)-1]
+			}
+		}
+	}
+	st.Fields.List = filtered
 }
 
 func detectPackageInType(t ast.Expr) string {
@@ -218,7 +289,7 @@ func rebuildTypeNameWithoutPackage(t ast.Expr) string {
 	return ""
 }
 
-func CollectInfo(search string, file *ast.File, fs *token.FileSet) (*Interface, error) {
+func CollectInfo(search string, file *ast.File, fs *token.FileSet, fileName string) (*Interface, error) {
 	var (
 		name        string
 		comment     string
@@ -261,6 +332,8 @@ func CollectInfo(search string, file *ast.File, fs *token.FileSet) (*Interface, 
 						Type:       tp,
 						Interface:  srv,
 						fs:         fs,
+						file:       file,
+						fileName:   fileName,
 					})
 				}
 
@@ -350,4 +423,16 @@ func isRootOf(path, root string) bool {
 	root, _ = filepath.Abs(root)
 	path, _ = filepath.Abs(path)
 	return root == path
+}
+
+func isBuiltin(name string) bool {
+	for _, k := range types.Typ {
+		if k.Name() == name {
+			return true
+		}
+	}
+	if name == "error" {
+		return true
+	}
+	return false
 }

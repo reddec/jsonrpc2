@@ -78,7 +78,7 @@ func (wg *WrapperGenerator) Generate(filename string) (*generationResult, error)
 		return nil, err
 	}
 
-	info, err := CollectInfo(wg.TypeName, p, fs)
+	info, err := CollectInfo(wg.TypeName, p, fs, filename)
 	if err != nil {
 		return nil, err
 	}
