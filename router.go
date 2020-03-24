@@ -205,12 +205,12 @@ func (gic *GlobalInterceptorContext) invoke() (responses []*Response, isBatch bo
 		go func(i int, request *Request) {
 			defer wg.Done()
 			if !request.IsValid() {
-				responses[i] = request.failed(InvalidRequest, "Invalid Request")
+				responses[i] = request.failed(InvalidRequest, "Invalid Request", nil)
 				return
 			}
 			invoker, ok := gic.caller.findMethod(request.Method)
 			if !ok {
-				responses[i] = request.failed(MethodNotFound, "Method not found")
+				responses[i] = request.failed(MethodNotFound, "Method not found", nil)
 				return
 			}
 			isPositional := len(request.Params) > 0 && request.Params[0] == '['
@@ -219,10 +219,10 @@ func (gic *GlobalInterceptorContext) invoke() (responses []*Response, isBatch bo
 			reply, err := gic.caller.callWithMethodsInterceptors(invoker, request, isPositional)
 			var jsonRpcErr *Error
 			if errors.As(err, &jsonRpcErr) {
-				responses[i] = request.failed(jsonRpcErr.Code, jsonRpcErr.Message)
+				responses[i] = request.failed(jsonRpcErr.Code, jsonRpcErr.Message, jsonRpcErr.Data)
 				return
 			} else if err != nil {
-				responses[i] = request.failed(AppError, err.Error())
+				responses[i] = request.failed(AppError, err.Error(), nil)
 				return
 			}
 			responses[i] = request.success(reply)

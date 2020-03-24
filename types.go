@@ -40,13 +40,14 @@ func (rq *Request) IsValid() bool {
 // Check request is notification (null ID)
 func (rq *Request) IsNotification() bool { return rq.ID == nil }
 
-func (rq *Request) failed(code int, message string) *Response {
+func (rq *Request) failed(code int, message string, data interface{}) *Response {
 	return &Response{
 		Version: Version,
 		ID:      rq.ID,
 		Error: &Error{
 			Code:    code,
 			Message: message,
+			Data:    data,
 		},
 	}
 }
