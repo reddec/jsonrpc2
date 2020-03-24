@@ -61,8 +61,9 @@ func (rq *Request) success(payload interface{}) *Response {
 
 // JSON-RPC 2.0 standard error object
 type Error struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
+	Code    int         `json:"code"`
+	Message string      `json:"message"`
+	Data    interface{} `json:"data,omitempty"`
 }
 
 func (e *Error) Error() string {
