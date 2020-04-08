@@ -48,9 +48,9 @@ export class {{.Service.Name}} {
             body: JSON.stringify(req)
         };
         if (this.__preflightHandler) {
-            await Promise.resolve(this.__preflightHandler(fetchParams));
+            await Promise.resolve(this.__preflightHandler(method, fetchParams));
         }
-        const res = await fetch(method, fetchParams);
+        const res = await fetch(this.__url, fetchParams);
         if (!res.ok) {
             throw new Error(res.status + ' ' + res.statusText);
         }
