@@ -23,7 +23,7 @@ export class {{.Service.Name}} {
     /**
     {{$method.Comment}}
     **/
-    async {{$method.Name}}({{- range $index, $arg := $method.Args}}{{if gt $index 0}}, {{end}}{{$arg.Name}}{{end}}){
+    async {{$method.Name | untitle}}({{- range $index, $arg := $method.Args}}{{if gt $index 0}}, {{end}}{{$arg.Name}}{{end}}){
         return (await this.__call('{{$method.Name}}', {
             "jsonrpc" : "2.0",
             "method" : "{{$.Generator.Qual $method}}",
