@@ -88,7 +88,7 @@ func (mg *Method) LocalTypes(parentImportPath string) []LocalType {
 			continue
 		}
 		definition.removeJSONIgnoredFields()
-		fields := definition.structFields()
+		fields := definition.StructFields()
 		ans = append(ans, LocalType{
 			Type:         definition.TypeName,
 			Definition:   astPrint(definition.Type, definition.FS),
@@ -104,11 +104,12 @@ func (mg *Method) LocalTypes(parentImportPath string) []LocalType {
 }
 
 type stField struct {
-	Name    string
-	Type    string
-	Tag     string
-	Comment string
-	AST     *ast.Field
+	Name      string
+	Type      string
+	Tag       string
+	Comment   string
+	AST       *ast.Field
+	Omitempty bool
 }
 
 type LocalType struct {
@@ -123,6 +124,7 @@ type typed struct {
 	Import string
 	Alias  string
 	Ops    string
+	AST    ast.Expr
 }
 
 func (a typed) localQual() string {
@@ -160,6 +162,7 @@ func (mg *Method) Args() []arg {
 					Type:   rebuildTypeNameWithoutPackage(t.Type),
 					Import: importPath,
 					Alias:  alias,
+					AST:    t.Type,
 				},
 			})
 		}
@@ -179,6 +182,7 @@ func (mg *Method) Return() typed {
 		Type:   rebuildTypeNameWithoutPackage(retType),
 		Import: importPath,
 		Alias:  alias,
+		AST:    retType,
 	}
 }
 
@@ -188,6 +192,8 @@ type Definition struct {
 	Type     *ast.TypeSpec
 	TypeName string
 	FS       *token.FileSet
+	FileDir  string
+	File     *ast.File
 }
 
 func findDefinitionFromAst(typeName, alias string, file *ast.File, fileDir string) *Definition {
@@ -195,7 +201,7 @@ func findDefinitionFromAst(typeName, alias string, file *ast.File, fileDir strin
 	if alias != "" {
 		v, err := godetector.ResolveImport(alias, file, fileDir)
 		if err != nil {
-			log.Println("failed resolve import for", alias, ":", err)
+			log.Println("failed resolve import for", alias, "from dir", fileDir, ":", err)
 			return nil
 		}
 		importDef = *v
@@ -226,6 +232,8 @@ func findDefinitionFromAst(typeName, alias string, file *ast.File, fileDir strin
 								Type:     st,
 								FS:       &fs,
 								TypeName: typeName,
+								FileDir:  importDef.Location,
+								File:     packageFile,
 							}
 						}
 					}
@@ -281,7 +289,7 @@ func (def *Definition) isStruct() bool {
 	return ok
 }
 
-func (def *Definition) structFields() []*stField {
+func (def *Definition) StructFields() []*stField {
 	st, ok := def.Type.Type.(*ast.StructType)
 	if !ok {
 		return nil
@@ -318,9 +326,10 @@ func (def *Definition) structFields() []*stField {
 		}
 
 		if jsTag, err := val.Get("json"); err == nil && jsTag != nil {
-			if jsTag.Value() != "-" {
-				f.Tag = jsTag.Value()
+			if jsTag.Name != "-" {
+				f.Tag = jsTag.Name
 			}
+			f.Omitempty = jsTag.HasOption("omitempty")
 		}
 	}
 	return ans
@@ -448,7 +457,7 @@ func CollectInfo(search string, file *ast.File, fs *token.FileSet, fileName stri
 		})
 	}
 	if srv == nil {
-		return nil, fmt.Errorf("interface %v not found", name)
+		return nil, fmt.Errorf("interface %v not found", search)
 	}
 	srv.Imports = imports
 	return srv, nil

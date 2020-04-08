@@ -1,0 +1,82 @@
+export class {{.Service.Name}}Error extends Error {
+    public readonly code: number;
+    public readonly details: any;
+
+    constructor(message: string, code: number, details: any) {
+        super(code + ': ' + message);
+        this.code = code;
+        this.details = details;
+    }
+}
+
+{{range definitions}}
+export interface {{.TypeName}} {
+    {{- range .StructFields}}
+    {{.Tag}}: {{. | typescript}}
+    {{- end}}
+}
+{{end}}
+
+/**
+{{.Service.Comment}}
+**/
+export class {{.Service.Name}} {
+
+    private __id: number;
+    private readonly __url: string;
+    private readonly __preflightHandler: any;
+
+
+    // Create new API handler to {{.Service.Name}}.
+    // preflightHandler (if defined) can return promise
+    constructor(base_url : string = '{{.DocAddr}}', preflightHandler = null) {
+        this.__url = base_url;
+        this.__id = 1;
+        this.__preflightHandler = preflightHandler;
+    }
+
+{{range $index, $method := .UsedMethods}}
+    /**
+    {{$method.Comment}}
+    **/
+    async {{$method.Name | untitle}}({{- range $index, $arg := $method.Args}}{{if gt $index 0}}, {{end}}{{$arg.Name}}: {{$arg | typescript}}{{end}}): Promise<{{$method.Return | typescript}}> {
+        return (await this.__call('{{$method.Name}}', {
+            "jsonrpc" : "2.0",
+            "method" : "{{$.Generator.Qual $method}}",
+            "id" : this.__next_id(),
+            "params" : [{{- range $index, $arg := $method.Args}}{{if gt $index 0}}, {{end}}{{$arg.Name}}{{end}}]
+        })) as {{$method.Return | typescript}};
+    }
+{{end}}
+
+
+    __next_id() {
+        this.__id += 1;
+        return this.__id
+    }
+
+    async __call(method: string, req: object): Promise<any> {
+        const fetchParams = {
+            method: "POST",
+            headers: {
+                'Content-Type' : 'application/json',
+            },
+            body: JSON.stringify(req)
+        };
+        if (this.__preflightHandler) {
+            await Promise.resolve(this.__preflightHandler(method, fetchParams));
+        }
+        const res = await fetch(this.__url, fetchParams);
+        if (!res.ok) {
+            throw new Error(res.status + ' ' + res.statusText);
+        }
+
+        const data = await res.json();
+
+        if ('error' in data) {
+            throw new {{.Service.Name}}Error(data.error.message, data.error.code, data.error.data);
+        }
+
+        return data.result;
+    }
+}

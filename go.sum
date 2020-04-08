@@ -28,6 +28,12 @@ github.com/reddec/godetector v0.0.0-20200319120627-ac18e2971584 h1:QX6XmYgJJUGoX
 github.com/reddec/godetector v0.0.0-20200319120627-ac18e2971584/go.mod h1:qzWrdJcUwU9Le6kSYBzD7Ev7MIdJSfHiJyAHnsunGg4=
 github.com/reddec/godetector v0.0.0-20200319122455-323f497683ad h1:R5kLoDE0RHg4QD2vACLUqfCIWd3s83aI1R2MdAsNixs=
 github.com/reddec/godetector v0.0.0-20200319122455-323f497683ad/go.mod h1:qzWrdJcUwU9Le6kSYBzD7Ev7MIdJSfHiJyAHnsunGg4=
+github.com/reddec/godetector v0.0.0-20200408153547-a6eede01ee90 h1:O/mP0i6BvV50UiMytTA5KeYgf4qenVQmr7UGZjq8bTM=
+github.com/reddec/godetector v0.0.0-20200408153547-a6eede01ee90/go.mod h1:qzWrdJcUwU9Le6kSYBzD7Ev7MIdJSfHiJyAHnsunGg4=
+github.com/reddec/godetector v0.0.0-20200408155258-e337e12236fc h1:PdZcEAGJqA5XKmX7Gpe0cI+x7m2Ky0UJ57gjxFdY8L0=
+github.com/reddec/godetector v0.0.0-20200408155258-e337e12236fc/go.mod h1:qzWrdJcUwU9Le6kSYBzD7Ev7MIdJSfHiJyAHnsunGg4=
+github.com/reddec/godetector v0.0.0-20200408155538-7d64c6317cb4 h1:LFwPSdRoP0UPJub8heXBMjlZbox4V66nu3sdfkPC+dc=
+github.com/reddec/godetector v0.0.0-20200408155538-7d64c6317cb4/go.mod h1:qzWrdJcUwU9Le6kSYBzD7Ev7MIdJSfHiJyAHnsunGg4=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
 golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550 h1:ObdrDkeb4kJdCP557AjRjq69pTHfNouLtWZG7j9rPN8=
 golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550/go.mod h1:yigFU9vqHzYiE8UmvKecakEJjdnWj3jj499lnFckfCI=
