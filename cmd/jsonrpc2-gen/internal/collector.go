@@ -94,6 +94,7 @@ func (mg *Method) LocalTypes(parentImportPath string) []LocalType {
 			Definition:   astPrint(definition.Type, definition.FS),
 			IsStruct:     definition.isStruct() && len(fields) > 0,
 			StructFields: fields,
+			Inspect:      definition,
 		})
 	}
 	sort.Slice(ans, func(i, j int) bool {
@@ -107,6 +108,7 @@ type stField struct {
 	Type    string
 	Tag     string
 	Comment string
+	AST     *ast.Field
 }
 
 type LocalType struct {
@@ -114,6 +116,7 @@ type LocalType struct {
 	Definition   string
 	IsStruct     bool
 	StructFields []*stField
+	Inspect      *Definition
 }
 type typed struct {
 	Type   string
@@ -233,6 +236,46 @@ func findDefinitionFromAst(typeName, alias string, file *ast.File, fileDir strin
 	return nil
 }
 
+func findDefinitionFromImport(importPath string, typeName string) *Definition {
+	defDir, err := godetector.FindPackageDefinitionDir(importPath, ".")
+	if err != nil {
+		log.Println("failed find package definition", importPath, ":", err)
+		return nil
+	}
+	importDef, err := godetector.InspectImportByDir(defDir)
+	if err != nil {
+		log.Println("failed inspect", defDir, ":", err)
+		return nil
+	}
+
+	var fs token.FileSet
+	importFile, err := parser.ParseDir(&fs, importDef.Location, nil, parser.AllErrors)
+	if err != nil {
+		log.Println("failed parse", importDef.Location, ":", err)
+		return nil
+	}
+	for _, packageDefintion := range importFile {
+		for _, packageFile := range packageDefintion.Files {
+			for _, decl := range packageFile.Decls {
+				if v, ok := decl.(*ast.GenDecl); ok && v.Tok == token.TYPE {
+					for _, spec := range v.Specs {
+						if st, ok := spec.(*ast.TypeSpec); ok && st.Name.Name == typeName {
+							return &Definition{
+								Import:   *importDef,
+								Decl:     v,
+								Type:     st,
+								FS:       &fs,
+								TypeName: typeName,
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
 func (def *Definition) isStruct() bool {
 	_, ok := def.Type.Type.(*ast.StructType)
 	return ok
@@ -260,6 +303,7 @@ func (def *Definition) structFields() []*stField {
 			Tag:     field.Names[0].Name,
 			Type:    astPrint(field.Type, def.FS),
 			Comment: comment,
+			AST:     field,
 		}
 		ans = append(ans, f)
 		if field.Tag == nil {

@@ -21,6 +21,7 @@ type Config struct {
 	Package     string `short:"p" long:"package" env:"PACKAGE" description:"Package name (can be override by output dir)" default:"events"`
 	Doc         string `short:"d" long:"doc" env:"DOC" description:"Generate markdown documentation"`
 	Python      string `short:"P" long:"python" env:"PYTHON" description:"Generate Python client" `
+	JS          string `long:"js" env:"JS" description:"Generate JS client"`
 	Case        string `short:"c" long:"case" env:"CASE" description:"Method name case style" default:"keep" choice:"keep" choice:"camel" choice:"pascal" choice:"snake" choice:"kebab"`
 	URL         string `long:"url" env:"URL" description:"URL for examples in documentation" default:"https://example.com/api"`
 	Interceptor bool   `short:"C" long:"interceptor" env:"INTERCEPTOR" description:"add interceptor for each method"`
@@ -102,6 +103,12 @@ func main() {
 	}
 	if config.Python != "" {
 		err = ioutil.WriteFile(config.Python, []byte(result.WithDocAddress(config.URL).GeneratePython()), 0755)
+		if err != nil {
+			panic(err)
+		}
+	}
+	if config.JS != "" {
+		err = ioutil.WriteFile(config.JS, []byte(result.WithDocAddress(config.URL).GenerateJS()), 0755)
 		if err != nil {
 			panic(err)
 		}

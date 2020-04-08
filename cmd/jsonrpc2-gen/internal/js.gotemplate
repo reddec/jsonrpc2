@@ -1,0 +1,66 @@
+export class {{.Service.Name}}Error extends Error {
+    constructor(message, code, details) {
+        super(message);
+        this.code = code;
+        this.details = details;
+    }
+}
+
+export class {{.Service.Name}} {
+    /**
+    {{.Service.Comment}}
+    **/
+
+    // Create new API handler to {{.Service.Name}}.
+    // preflightHandler (if defined) can return promise
+    constructor(base_url = '{{.DocAddr}}', preflightHandler = null) {
+        this.__url = base_url;
+        this.__id = 1;
+        this.__preflightHandler = preflightHandler;
+    }
+
+{{range $index, $method := .UsedMethods}}
+    /**
+    {{$method.Comment}}
+    **/
+    async {{$method.Name}}({{- range $index, $arg := $method.Args}}{{if gt $index 0}}, {{end}}{{$arg.Name}}{{end}}){
+        return (await this.__call('{{$method.Name}}', {
+            "jsonrpc" : "2.0",
+            "method" : "{{$.Generator.Qual $method}}",
+            "id" : this.__next_id(),
+            "params" : [{{- range $index, $arg := $method.Args}}{{if gt $index 0}}, {{end}}{{$arg.Name}}{{end}}]
+        }));
+    }
+{{end}}
+
+
+    __next_id() {
+        this.__id += 1;
+        return this.__id
+    }
+
+    async __call(method, req) {
+        const fetchParams = {
+            method: "POST",
+            headers: {
+                'Content-Type' : 'application/json',
+            },
+            body: JSON.stringify(req)
+        };
+        if (this.__preflightHandler) {
+            await Promise.resolve(this.__preflightHandler(fetchParams));
+        }
+        const res = await fetch(method, fetchParams);
+        if (!res.ok) {
+            throw new Error(res.status + ' ' + res.statusText);
+        }
+
+        const data = await res.json();
+
+        if ('error' in data) {
+            throw new {{.Service.Name}}Error(data.message, data.code, data.data);
+        }
+
+        return data;
+    }
+}
