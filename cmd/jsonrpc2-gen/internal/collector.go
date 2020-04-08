@@ -302,6 +302,9 @@ func (def *Definition) StructFields() []*stField {
 		if len(field.Names) == 0 {
 			continue
 		}
+		if !ast.IsExported(field.Names[0].Name) {
+			continue
+		}
 		var comment string
 		if field.Comment != nil {
 			comment = field.Comment.Text()
@@ -354,6 +357,10 @@ func (def *Definition) removeJSONIgnoredFields() {
 		val, err := structtag.Parse(s)
 		if err != nil {
 			log.Println("failed parse tags:", err)
+			continue
+		}
+		if !ast.IsExported(field.Names[0].Name) {
+			filtered = filtered[:len(filtered)-1]
 			continue
 		}
 
