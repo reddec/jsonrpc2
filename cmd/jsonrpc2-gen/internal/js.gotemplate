@@ -61,6 +61,6 @@ export class {{.Service.Name}} {
             throw new {{.Service.Name}}Error(data.message, data.code, data.data);
         }
 
-        return data;
+        return data.result;
     }
 }
