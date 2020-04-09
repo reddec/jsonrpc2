@@ -50,12 +50,12 @@ export class {{.Service.Name}} {
 {{end}}
 
 
-    __next_id() {
+    private __next_id() {
         this.__id += 1;
         return this.__id
     }
 
-    async __call(method: string, req: object): Promise<any> {
+    private async __call(method: string, req: object): Promise<any> {
         const fetchParams = {
             method: "POST",
             headers: {
