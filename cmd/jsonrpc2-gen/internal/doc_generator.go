@@ -7,7 +7,7 @@ import (
 	"text/template"
 )
 
-//go:generate go-bindata -pkg internal template.gotemplate python.gotemplate js.gotemplate ts.gotemplate
+//go:generate go-bindata -pkg internal template.gotemplate python.gotemplate js.gotemplate ts.gotemplate method_doc.gotemplate
 func (result *generationResult) GenerateMarkdown() string {
 	fm := sprig.TxtFuncMap()
 	fm["firstLine"] = func(text string) string {

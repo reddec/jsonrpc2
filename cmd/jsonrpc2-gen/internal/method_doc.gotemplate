@@ -1,0 +1,31 @@
+# {{$.Global.Generator.Qual .Method}}
+
+{{.Method.Comment}}
+
+* Method: `{{$.Global.Generator.Qual .Method}}`
+* Returns: `{{.Method.ReturnType}}`
+{{with .Method.Args}}
+* Arguments:
+
+| Position | Name | Type |
+|----------|------|------|
+{{- range $index, $arg := .}}
+| {{$index}} | {{$arg.Name}} | `{{$arg.Ops}}{{$arg.Type}}` |
+{{- end}}
+{{end}}
+
+{{- range $index, $localType := .Method.LocalTypes $.Global.Import}}
+### {{$localType.Type}}
+{{if $localType.IsStruct}}
+| Json | Type | Comment |
+|------|------|---------|
+{{- range $localType.StructFields}}
+| {{.Tag}} | `{{.Type}}` | {{.Comment | firstLine }} |
+{{- end}}
+{{- else}}
+```go
+type {{$localType.Definition}}
+```
+{{- end}}
+{{- end}}
+

@@ -4,6 +4,7 @@
 // python.gotemplate
 // js.gotemplate
 // ts.gotemplate
+// method_doc.gotemplate
 // DO NOT EDIT!
 
 package internal
@@ -151,6 +152,26 @@ func tsGotemplate() (*asset, error) {
 	return a, nil
 }
 
+var _method_docGotemplate = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\x8c\x91\x4d\x6e\x32\x31\x0c\x86\xf7\x39\x85\x25\x58\xa1\x8f\x1c\x00\xe9\x5b\xa0\x56\x45\x54\xf4\x9f\x03\x4c\x0a\x26\x44\xca\x24\x28\xc9\xa8\xad\x92\xdc\xbd\xca\xcf\xcc\x74\x50\x17\x65\x13\xfc\x8e\xfd\xda\x7e\x3c\x03\xef\xe7\x74\x23\xf5\x3b\x93\x74\x83\x0a\x0d\x73\xda\xd0\x97\x8e\x49\xa0\x0f\xe8\xce\xfa\x18\x23\x21\xde\xd7\x80\xde\xe8\xb6\x45\xe5\x92\xb8\x80\xa2\xad\xa0\xf9\x83\x49\x43\x16\xf0\x8a\xae\x33\xca\xe6\x82\xde\xb0\x68\xfb\xaf\x0b\xa6\x1c\xef\x3f\x84\x3b\xf7\x55\x74\x6d\xb8\x8d\x91\x2c\x60\x6d\x78\x97\xfa\xda\x15\x21\x01\x9e\xb5\x15\x4e\x68\x05\x01\x1e\x59\x8b\x10\x20\xd5\x43\x20\x61\x39\xfc\xc2\xf4\x21\xde\x2f\xc1\x30\xc5\x11\xe6\x42\x1d\xf1\xf3\x1f\xcc\x99\xe1\xb0\xfa\x0f\x34\x46\x12\x12\x87\xac\xc7\x08\x39\x60\x86\xd3\x64\x9e\xe3\xa6\x0a\x4f\x17\x1b\x63\xfd\x5f\x47\x86\x62\x8d\x2a\x81\xf2\xbe\xbc\xbf\x75\x93\xfa\xc0\x64\x9e\x33\xf5\xac\x0b\xee\x7a\xd1\xc2\x40\x70\xdb\x5e\xb4\x49\x84\x67\xb3\x7c\x9e\xa1\xb0\xb6\x24\xde\x8b\xd3\x0f\x3f\xba\xb5\x6f\xce\x74\x07\x97\xf7\xb8\xb7\x99\x4b\x01\x02\xf5\x5c\x23\x9a\xe9\x73\x4d\x66\xf4\x2c\x8e\x77\x02\xe5\xd1\x56\x3e\x74\xcf\x78\x4f\x63\xdc\x3e\x7d\x18\xba\xc0\x49\x18\xeb\x76\x42\x21\xa4\xcc\x09\x99\x25\xa0\xb4\x69\xfc\xa6\x69\xb8\x26\x2e\x0d\x38\xd9\xee\x16\x4f\x42\xe5\xbb\x96\xa4\xeb\xea\x42\xf6\x3b\x00\x00\xff\xff\xb0\x28\xe0\x93\xb2\x02\x00\x00")
+
+func method_docGotemplateBytes() ([]byte, error) {
+	return bindataRead(
+		_method_docGotemplate,
+		"method_doc.gotemplate",
+	)
+}
+
+func method_docGotemplate() (*asset, error) {
+	bytes, err := method_docGotemplateBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "method_doc.gotemplate", size: 690, mode: os.FileMode(420), modTime: time.Unix(1586438099, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 // Asset loads and returns the asset for the given name.
 // It returns an error if the asset could not be found or
 // could not be loaded.
@@ -203,10 +224,11 @@ func AssetNames() []string {
 
 // _bindata is a table, holding each asset generator, mapped to its name.
 var _bindata = map[string]func() (*asset, error){
-	"template.gotemplate": templateGotemplate,
-	"python.gotemplate":   pythonGotemplate,
-	"js.gotemplate":       jsGotemplate,
-	"ts.gotemplate":       tsGotemplate,
+	"template.gotemplate":   templateGotemplate,
+	"python.gotemplate":     pythonGotemplate,
+	"js.gotemplate":         jsGotemplate,
+	"ts.gotemplate":         tsGotemplate,
+	"method_doc.gotemplate": method_docGotemplate,
 }
 
 // AssetDir returns the file names below a certain
@@ -250,10 +272,11 @@ type bintree struct {
 }
 
 var _bintree = &bintree{nil, map[string]*bintree{
-	"js.gotemplate":       &bintree{jsGotemplate, map[string]*bintree{}},
-	"python.gotemplate":   &bintree{pythonGotemplate, map[string]*bintree{}},
-	"template.gotemplate": &bintree{templateGotemplate, map[string]*bintree{}},
-	"ts.gotemplate":       &bintree{tsGotemplate, map[string]*bintree{}},
+	"js.gotemplate":         &bintree{jsGotemplate, map[string]*bintree{}},
+	"method_doc.gotemplate": &bintree{method_docGotemplate, map[string]*bintree{}},
+	"python.gotemplate":     &bintree{pythonGotemplate, map[string]*bintree{}},
+	"template.gotemplate":   &bintree{templateGotemplate, map[string]*bintree{}},
+	"ts.gotemplate":         &bintree{tsGotemplate, map[string]*bintree{}},
 }}
 
 // RestoreAsset restores an asset under the given directory
