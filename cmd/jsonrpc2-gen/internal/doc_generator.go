@@ -3,6 +3,7 @@ package internal
 import (
 	"bytes"
 	"github.com/Masterminds/sprig"
+	"net/url"
 	"strings"
 	"text/template"
 )
@@ -25,4 +26,14 @@ func (result *generationResult) GenerateMarkdown() string {
 func (result *generationResult) WithDocAddress(address string) *generationResult {
 	result.DocAddr = address
 	return result
+}
+
+func (result *generationResult) WsAddr() string {
+	u, err := url.Parse(result.DocAddr)
+	if err != nil {
+		return "ws://example.com/api"
+	}
+
+	u.Scheme = "ws"
+	return u.String()
 }

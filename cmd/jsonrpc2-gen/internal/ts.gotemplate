@@ -158,7 +158,7 @@ export class {{.Service.Name}} {
 
 
     // Create new API handler to {{.Service.Name}}.
-    constructor(base_url : string = '{{.DocAddr}}') {
+    constructor(base_url : string = '{{.WsAddr}}') {
         const proto = (new URL(base_url)).protocol;
         switch (proto) {
             case "ws":
