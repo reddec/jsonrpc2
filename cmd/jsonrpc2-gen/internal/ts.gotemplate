@@ -195,10 +195,17 @@ export class {{.Service.Name}} {
         return this.__id
     }
 
-    private async __call(req: object): Promise<any> {
-        const data = await this.__executor.call(req.id,JSON.stringify(req))
+    private async __call(req: { id: number, jsonrpc: string, method: string, params: object | Array<any> }): Promise<any> {
+        const data = await this.__executor.call(req.id, JSON.stringify(req)) as {
+            error?: {
+                message: string,
+                code: number,
+                data?: any
+            },
+            result?:any
+        }
 
-        if ('error' in data) {
+        if (data.error) {
             throw new TincWebError(data.error.message, data.error.code, data.error.data);
         }
 
