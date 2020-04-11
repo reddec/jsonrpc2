@@ -161,13 +161,13 @@ export class {{.Service.Name}} {
     constructor(base_url : string = '{{.WsAddr}}') {
         const proto = (new URL(base_url)).protocol;
         switch (proto) {
-            case "ws":
-            case "wss":{
+            case "ws:":
+            case "wss:":{
                 this.__executor=new wsExecutor(base_url);
                 break
             }
-            case "http":
-            case "https":
+            case "http:":
+            case "https:":
             default:{
                 this.__executor = new postExecutor(base_url);
                 break
