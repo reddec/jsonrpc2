@@ -1,10 +1,13 @@
 package jsonrpc2
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/gorilla/websocket"
 	"log"
 	"net/http"
+	"sync"
 )
 
 func ToArray(params json.RawMessage, expected int) ([]json.RawMessage, error) {
@@ -33,8 +36,22 @@ func UnmarshalArray(params json.RawMessage, args ...interface{}) error {
 	return nil
 }
 
-// Expose JSON-RPC router as HTTP handler. Supported methods: POST, PUT, PATCH
+// Expose JSON-RPC route over HTTP Rest (POST) and web sockets (GET)
 func Handler(router *Router) http.HandlerFunc {
+	rest := HandlerRest(router)
+	ws := HandlerWS(router)
+	return func(writer http.ResponseWriter, request *http.Request) {
+		if request.Method == http.MethodGet {
+			ws.ServeHTTP(writer, request)
+		} else {
+			rest.ServeHTTP(writer, request)
+		}
+	}
+}
+
+// Expose JSON-RPC router as HTTP handler where one requests is one execution.
+// Supported methods: POST, PUT, PATCH
+func HandlerRest(router *Router) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		defer request.Body.Close()
 		switch request.Method {
@@ -57,6 +74,53 @@ func Handler(router *Router) http.HandlerFunc {
 		if err != nil {
 			log.Println("server error:", err)
 		}
+	}
+}
+
+// Process requests over web socket (all requests are processing in parallel in a separate go-routine)
+func HandlerWS(router *Router) http.HandlerFunc {
+	upgrader := websocket.Upgrader{
+		ReadBufferSize:  8192,
+		WriteBufferSize: 8192,
+	}
+	return func(writer http.ResponseWriter, request *http.Request) {
+		defer request.Body.Close()
+
+		conn, err := upgrader.Upgrade(writer, request, nil)
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+		var writeSync sync.Mutex
+		var wg sync.WaitGroup
+		for {
+			msgType, p, err := conn.ReadMessage()
+			if err != nil {
+				break
+			}
+			if msgType != websocket.TextMessage {
+				continue
+			}
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				resp, isBatch := router.Invoke(bytes.NewReader(p))
+				var replyData []byte
+				if isBatch {
+					replyData, err = json.MarshalIndent(resp, "", "  ")
+				} else if len(resp) > 0 {
+					replyData, err = json.MarshalIndent(resp[0], "", "  ")
+				}
+				if err != nil {
+					log.Println("server error:", err)
+					return
+				}
+				writeSync.Lock()
+				_ = conn.WriteMessage(websocket.TextMessage, replyData)
+				writeSync.Unlock()
+			}()
+		}
+		wg.Wait()
 	}
 }
 

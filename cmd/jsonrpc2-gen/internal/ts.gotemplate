@@ -17,22 +17,163 @@ export interface {{.TypeName}} {
 }
 {{end}}
 
+// support stuff
+
+
+interface rpcExecutor {
+    call(id: number, payload: string): Promise<object>;
+}
+
+class wsExecutor {
+    private socket?: WebSocket;
+    private connecting = false;
+    private readonly pendingConnection: Array<() => (void)> = [];
+    private readonly correlation = new Map<number, [(data: object) => void, (err: object) => void]>();
+
+    constructor(private readonly url: string) {
+    }
+
+    async call(id: number, payload: string): Promise<object> {
+        const conn = await this.connectIfNeeded();
+        if (this.correlation.has(id)) {
+            throw new Error(`already exists pending request with id ${id}`);
+        }
+        let future = new Promise<object>((resolve, reject) => {
+            this.correlation.set(id, [resolve, reject]);
+        });
+        conn.send(payload);
+        return (await future);
+    }
+
+    private async connectIfNeeded(): Promise<WebSocket> {
+        while (this.connecting) {
+            await new Promise((resolve => {
+                this.pendingConnection.push(resolve);
+            }))
+        }
+        if (this.socket) {
+            return this.socket;
+        }
+        this.connecting = true;
+        let socket;
+        try {
+            socket = await this.connect();
+        } finally {
+            this.connecting = false;
+        }
+        socket.onerror = () => {
+            this.onConnectionFailed();
+        }
+        socket.onclose = () => {
+            this.onConnectionFailed();
+        }
+        socket.onmessage = ({data}) => {
+            let res;
+            try {
+                res = JSON.parse(data);
+            } catch (e) {
+                console.error("failed parse request:", e);
+            }
+            const task = this.correlation.get(res.id);
+            if (task) {
+                this.correlation.delete(res.id);
+                task[0](res);
+            }
+        }
+        this.socket = socket;
+
+        let cp = this.pendingConnection;
+        this.pendingConnection.slice(0, 0);
+        cp.forEach((f) => f());
+        return this.socket;
+    }
+
+    private connect(): Promise<WebSocket> {
+        return new Promise<WebSocket>(((resolve, reject) => {
+            let socket = new WebSocket(this.url);
+            let resolved = false;
+            socket.onopen = () => {
+                resolved = true;
+                resolve(socket);
+            }
+
+            socket.onerror = (e) => {
+                if (!resolved) {
+                    reject(e);
+                    resolved = true;
+                }
+            }
+
+            socket.onclose = (e) => {
+                if (!resolved) {
+                    reject(e);
+                    resolved = true;
+                }
+            }
+        }));
+    }
+
+    private onConnectionFailed() {
+        let sock = this.socket;
+        this.socket = undefined;
+        if (sock) {
+            sock.close();
+        }
+        const cp = Array.from(this.correlation.values());
+        this.correlation.clear();
+        const err = new Error('connection closed');
+        cp.forEach((([_, reject]) => {
+            reject(err);
+        }))
+    }
+}
+
+class postExecutor {
+    constructor(private readonly url: string) {
+    }
+
+    async call(id: number, payload: string): Promise<object> {
+        const fetchParams = {
+            method: "POST",
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: payload
+        };
+        const res = await fetch(this.url, fetchParams);
+        if (!res.ok) {
+            throw new Error(res.status + ' ' + res.statusText);
+        }
+        return await res.json();
+    }
+}
+
 /**
 {{.Service.Comment}}
 **/
 export class {{.Service.Name}} {
 
     private __id: number;
-    private readonly __url: string;
-    private readonly __preflightHandler: any;
+    private __executor:rpcExecutor;
 
 
     // Create new API handler to {{.Service.Name}}.
-    // preflightHandler (if defined) can return promise
-    constructor(base_url : string = '{{.DocAddr}}', preflightHandler = null) {
-        this.__url = base_url;
+    constructor(base_url : string = '{{.DocAddr}}') {
+        const proto = (new URL(base_url)).protocol;
+        switch (proto) {
+            case "ws":
+            case "wss":{
+                this.__executor=new wsExecutor(base_url);
+                break
+            }
+            case "http":
+            case "https":
+            default:{
+                this.__executor = new postExecutor(base_url);
+                break
+            }
+        }
         this.__id = 1;
-        this.__preflightHandler = preflightHandler;
     }
 
 {{range $index, $method := .UsedMethods}}
@@ -40,7 +181,7 @@ export class {{.Service.Name}} {
     {{$method.Comment}}
     **/
     async {{$method.Name | untitle}}({{- range $index, $arg := $method.Args}}{{if gt $index 0}}, {{end}}{{$arg.Name}}: {{$arg | typescript}}{{end}}): Promise<{{$method.Return | typescript}}> {
-        return (await this.__call('{{$method.Name}}', {
+        return (await this.__call({
             "jsonrpc" : "2.0",
             "method" : "{{$.Generator.Qual $method}}",
             "id" : this.__next_id(),
@@ -49,32 +190,16 @@ export class {{.Service.Name}} {
     }
 {{end}}
 
-
     private __next_id() {
         this.__id += 1;
         return this.__id
     }
 
-    private async __call(method: string, req: object): Promise<any> {
-        const fetchParams = {
-            method: "POST",
-            headers: {
-                'Content-Type' : 'application/json',
-            },
-            body: JSON.stringify(req)
-        };
-        if (this.__preflightHandler) {
-            await Promise.resolve(this.__preflightHandler(method, fetchParams));
-        }
-        const res = await fetch(this.__url, fetchParams);
-        if (!res.ok) {
-            throw new Error(res.status + ' ' + res.statusText);
-        }
-
-        const data = await res.json();
+    private async __call(req: object): Promise<any> {
+        const data = await this.__executor.call(req.id,JSON.stringify(req))
 
         if ('error' in data) {
-            throw new {{.Service.Name}}Error(data.error.message, data.error.code, data.error.data);
+            throw new TincWebError(data.error.message, data.error.code, data.error.data);
         }
 
         return data.result;
