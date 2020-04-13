@@ -1,9 +1,33 @@
 import requests
+{{with definitions}}
+from dataclasses import dataclass
+{{- end}}
+# imports
+{{range definitions}}
 
-from typing import List, Any
+@dataclass
+class {{.TypeName}}:
+{{- range .StructFields}}
+    {{.Name | snakecase}}: '{{. | python}}'
+{{- end}}
 
+    def to_json(self) -> dict:
+        return {
+    {{- range .StructFields}}
+            "{{.Tag}}": {{to_json . (print "self." (.Name | snakecase) )}},
+    {{- end}}
+        }
 
-class {{.Service.Name}}:
+    @staticmethod
+    def from_json(payload: dict) -> '{{.TypeName}}':
+        return {{.TypeName}}(
+{{- range .StructFields}}
+                {{.Name | snakecase}}={{from_json . (print "payload['" .Tag "']" )}},
+{{- end}}
+        )
+{{end}}
+
+class {{.Service.Name}}Client:
     """
     {{.Service.Comment}}
     """
@@ -16,7 +40,7 @@ class {{.Service.Name}}:
         self.__id += 1
         return self.__id
 {{range $index, $method := .UsedMethods}}
-    def {{$method.Name | snakecase}}(self{{- range $index, $arg := $method.Args}}, {{$arg.Name | snakecase}}: {{$arg | python}}{{end}}):
+    def {{$method.Name | snakecase}}(self{{- range $index, $arg := $method.Args}}, {{$arg.Name | snakecase}}: {{$arg | python}}{{end}}) -> {{$method.Return | python}}:
         """
         {{$method.Comment}}
         """
@@ -24,10 +48,10 @@ class {{.Service.Name}}:
             "jsonrpc": "2.0",
             "method": "{{$.Generator.Qual $method}}",
             "id": self.__next_id(),
-            "params": [{{- range $index, $arg := $method.Args}}{{$arg.Name | snakecase}}, {{end}}]
+            "params": [{{- range $index, $arg := $method.Args}}{{to_json .  ($arg.Name | snakecase)}}, {{end}}]
             })
         assert response.ok
         payload = response.json()
         assert 'error' not in payload, Exception(payload['error'])
-        return payload['result']
+        return {{from_json $method.Return "payload['result']"}}
 {{end}}
