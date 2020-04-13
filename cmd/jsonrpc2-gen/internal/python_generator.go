@@ -49,6 +49,11 @@ func (result *generationResult) GeneratePython() string {
 	}
 	var python Python
 	python.BeforeInspect = deepparser.RemoveJsonIgnoredFields
+	for _, mth := range result.UsedMethods {
+		for _, lt := range mth.LocalTypes(result.Import) {
+			python.Add(lt.Inspect)
+		}
+	}
 	fm := sprig.TxtFuncMap()
 	fm["python"] = func(field interface{}) string {
 		switch v := field.(type) {
@@ -58,6 +63,8 @@ func (result *generationResult) GeneratePython() string {
 			return python.MapType(v.AST)
 		case *deepparser.StField:
 			return python.MapField(v)
+		case *deepparser.Definition:
+			return python.MapType(v.Type.Type)
 		default:
 			panic("ts?")
 		}
@@ -129,17 +136,23 @@ func (result *generationResult) GeneratePython() string {
 		return subType + ".from_json(" + param + ")"
 	}
 	fm["definitions"] = func() []*deepparser.Definition {
-		if python.Ordered == nil {
-			for _, mth := range result.UsedMethods {
-				for _, lt := range mth.LocalTypes(result.Import) {
-					python.Add(lt.Inspect)
-				}
-			}
-		}
 		var ans []*deepparser.Definition
 		for _, d := range python.Ordered {
 			if len(d.StructFields()) > 0 {
 				ans = append(ans, d)
+			}
+		}
+		return ans
+	}
+
+	fm["enums"] = func() []*deepparser.Definition {
+		var ans []*deepparser.Definition
+		for _, d := range python.Ordered {
+			if d.IsTypeAlias() {
+				fv := d.FindEnumValues()
+				if len(fv) > 0 {
+					ans = append(ans, d)
+				}
 			}
 		}
 		return ans
@@ -250,7 +263,7 @@ func (py *Python) AddModule(pyImportName string, names ...string) {
 
 func (py *Python) isDefined(name string) bool {
 	for _, p := range py.Ordered {
-		if p.TypeName == name && len(p.StructFields()) > 0 {
+		if p.TypeName == name && ((p.IsTypeAlias() && len(p.FindEnumValues()) > 0) || len(p.StructFields()) > 0) {
 			return true
 		}
 	}

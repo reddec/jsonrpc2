@@ -2,7 +2,24 @@ import requests
 {{with definitions}}
 from dataclasses import dataclass
 {{- end}}
+{{with enums}}
+from enum import Enum
+{{- end}}
 # imports
+{{range enums}}
+
+class {{.TypeName}}(Enum):
+    {{- range .FindEnumValues}}
+    {{.Name | snakecase | upper}} = {{.Value}}
+    {{- end}}
+
+    def to_json(self) -> {{. | python}}:
+        return self.value
+
+    @staticmethod
+    def from_json(payload: {{. | python}}) -> '{{.TypeName}}':
+        return {{.TypeName}}(payload)
+{{end}}
 {{range definitions}}
 
 @dataclass
