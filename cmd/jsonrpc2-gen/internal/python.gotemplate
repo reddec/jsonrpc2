@@ -32,9 +32,10 @@ class {{.Service.Name}}Client:
     {{.Service.Comment}}
     """
 
-    def __init__(self, base_url: str = '{{.DocAddr}}'):
+    def __init__(self, base_url: str = '{{.DocAddr}}', session: Optional[requests.Session] = None):
         self.__url = base_url
         self.__id = 1
+        self.__session = session or requests
 
     def __next_id(self):
         self.__id += 1
@@ -44,13 +45,13 @@ class {{.Service.Name}}Client:
         """
         {{$method.Comment}}
         """
-        response = requests.post(self.__url, json={
+        response = self.__session.post(self.__url, json={
             "jsonrpc": "2.0",
             "method": "{{$.Generator.Qual $method}}",
             "id": self.__next_id(),
             "params": [{{- range $index, $arg := $method.Args}}{{to_json .  ($arg.Name | snakecase)}}, {{end}}]
-            })
-        assert response.ok
+        })
+        assert response.ok, str(response.status_code) + " " + str(response.reason)
         payload = response.json()
         assert 'error' not in payload, Exception(payload['error'])
         return {{from_json $method.Return "payload['result']"}}
