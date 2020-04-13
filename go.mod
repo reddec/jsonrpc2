@@ -15,7 +15,7 @@ require (
 	github.com/imdario/mergo v0.3.8 // indirect
 	github.com/jessevdk/go-flags v1.4.1-0.20180331124232-1c38ed7ad0cc
 	github.com/mitchellh/copystructure v1.0.0 // indirect
-	github.com/reddec/godetector v0.0.0-20200413095059-6468e10adfef
+	github.com/reddec/godetector v0.0.0-20200413134057-55e7f1dc5a36
 	github.com/stretchr/testify v1.5.1 // indirect
 	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543 // indirect
 	gopkg.in/yaml.v2 v2.2.8
