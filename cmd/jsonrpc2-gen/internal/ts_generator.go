@@ -3,6 +3,7 @@ package internal
 import (
 	"bytes"
 	"github.com/Masterminds/sprig"
+	"github.com/reddec/godetector/deepparser"
 	"go/ast"
 	"strings"
 	"text/template"
@@ -10,6 +11,7 @@ import (
 
 func (result *generationResult) GenerateTS() string {
 	var tsg tsGenerator
+	tsg.BeforeInspect = deepparser.RemoveJsonIgnoredFields
 	fm := sprig.TxtFuncMap()
 	fm["firstLine"] = func(text string) string {
 		return strings.Split(text, "\n")[0]
@@ -20,17 +22,17 @@ func (result *generationResult) GenerateTS() string {
 			return tsg.MapType(v.AST)
 		case arg:
 			return tsg.MapType(v.AST)
-		case *stField:
+		case *deepparser.StField:
 			return tsg.MapField(v)
 		default:
 			panic("ts?")
 		}
 	}
-	fm["definitions"] = func() []*Definition {
+	fm["definitions"] = func() []*deepparser.Definition {
 		if tsg.Ordered == nil {
 			for _, mth := range result.UsedMethods {
 				for _, lt := range mth.LocalTypes(result.Import) {
-					tsg.Inspect(lt.Inspect)
+					tsg.Add(lt.Inspect)
 				}
 			}
 		}
@@ -46,8 +48,7 @@ func (result *generationResult) GenerateTS() string {
 }
 
 type tsGenerator struct {
-	Ordered []*Definition
-	Parsed  map[string]*Definition
+	deepparser.Typer
 }
 
 func (tsg *tsGenerator) mapBase(typeName string) string {
@@ -84,34 +85,10 @@ func (tsg *tsGenerator) MapType(t ast.Expr) string {
 	return "any"
 }
 
-func (tsg *tsGenerator) MapField(st *stField) string {
+func (tsg *tsGenerator) MapField(st *deepparser.StField) string {
 	tp := tsg.MapType(st.AST.Type)
 	if st.Omitempty {
 		return tp + " | null"
 	}
 	return tp
-}
-
-func (tsg *tsGenerator) Inspect(def *Definition) {
-	uid := def.Import.Path + "@" + def.TypeName
-	_, ok := tsg.Parsed[uid]
-	if ok {
-		return
-	}
-	if tsg.Parsed == nil {
-		tsg.Parsed = make(map[string]*Definition)
-	}
-	tsg.Ordered = append(tsg.Ordered, def)
-	def.removeJSONIgnoredFields()
-	tsg.Parsed[uid] = def
-
-	for _, f := range def.StructFields() {
-		alias := detectPackageInType(f.AST.Type)
-		typeName := rebuildTypeNameWithoutPackage(f.AST.Type)
-		def := findDefinitionFromAst(typeName, alias, def.File, def.FileDir)
-
-		if def != nil {
-			tsg.Inspect(def)
-		}
-	}
 }

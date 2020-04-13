@@ -30,6 +30,10 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/reddec/godetector v0.0.0-20200413071027-57879c2e2b36 h1:cSyKH+JmXyrbWMC+c5Ajdz2ERbOjlGWwXp1L/wFQOas=
 github.com/reddec/godetector v0.0.0-20200413071027-57879c2e2b36/go.mod h1:qzWrdJcUwU9Le6kSYBzD7Ev7MIdJSfHiJyAHnsunGg4=
+github.com/reddec/godetector v0.0.0-20200413093452-3a4c4ee68449 h1:ZpygW0cfHdmYfIkaZANOFRSIOcMXc1pYL3EcsUAXmS0=
+github.com/reddec/godetector v0.0.0-20200413093452-3a4c4ee68449/go.mod h1:XLO4bwmNyAYTfIu/S6PQX0kt7esjT3/s2ZEWVU16+BU=
+github.com/reddec/godetector v0.0.0-20200413095059-6468e10adfef h1:VtgXAkq04HozZ5aSXg6CQEAjdZTPEPUqjq6todtjncM=
+github.com/reddec/godetector v0.0.0-20200413095059-6468e10adfef/go.mod h1:XLO4bwmNyAYTfIu/S6PQX0kt7esjT3/s2ZEWVU16+BU=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/testify v1.5.1 h1:nOGnQDM7FYENwehXlg/kFVnos3rEvtKTjRvOWSzb6H4=
 github.com/stretchr/testify v1.5.1/go.mod h1:5W2xD1RspED5o8YsWQXVCued0rvSQ+mT+I5cxcmMvtA=

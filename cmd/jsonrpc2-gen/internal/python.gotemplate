@@ -1,11 +1,12 @@
 import requests
+from typing import List, Any
 
 class {{.Service.Name}}:
     """
     {{.Service.Comment}}
     """
 
-    def __init__(self, base_url = '{{.DocAddr}}'):
+    def __init__(self, base_url: str = '{{.DocAddr}}'):
         self.__url = base_url
         self.__id = 1
 
@@ -14,7 +15,7 @@ class {{.Service.Name}}:
         return self.__id
 
 {{range $index, $method := .UsedMethods}}
-    def {{$method.Name}}(self{{- range $index, $arg := $method.Args}}, {{$arg.Name}}{{end}}):
+    def {{$method.Name}}(self{{- range $index, $arg := $method.Args}}, {{$arg.Name}}: {{$arg | python}}{{end}}):
         """
         {{$method.Comment}}
         """

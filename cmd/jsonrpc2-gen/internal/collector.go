@@ -4,10 +4,8 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/dave/jennifer/jen"
-	"github.com/fatih/structtag"
-	"github.com/reddec/godetector"
+	"github.com/reddec/godetector/deepparser"
 	"go/ast"
-	"go/parser"
 	"go/token"
 	"go/types"
 	"log"
@@ -83,16 +81,16 @@ func (mg *Method) LocalTypes(parentImportPath string) []LocalType {
 	// collect types definitions
 	var ans = make([]LocalType, 0, len(usedTypes))
 	for _, typeDef := range usedTypes {
-		definition := findDefinitionFromAst(typeDef.Type, typeDef.Alias, mg.file, filepath.Dir(mg.fileName))
+		definition := deepparser.FindDefinitionFromAst(typeDef.Type, typeDef.Alias, mg.file, filepath.Dir(mg.fileName))
 		if definition == nil {
 			continue
 		}
-		definition.removeJSONIgnoredFields()
+		definition.RemoveJSONIgnoredFields()
 		fields := definition.StructFields()
 		ans = append(ans, LocalType{
 			Type:         definition.TypeName,
 			Definition:   astPrint(definition.Type, definition.FS),
-			IsStruct:     definition.isStruct() && len(fields) > 0,
+			IsStruct:     definition.IsStruct() && len(fields) > 0,
 			StructFields: fields,
 			Inspect:      definition,
 		})
@@ -103,21 +101,12 @@ func (mg *Method) LocalTypes(parentImportPath string) []LocalType {
 	return ans
 }
 
-type stField struct {
-	Name      string
-	Type      string
-	Tag       string
-	Comment   string
-	AST       *ast.Field
-	Omitempty bool
-}
-
 type LocalType struct {
 	Type         string
 	Definition   string
 	IsStruct     bool
-	StructFields []*stField
-	Inspect      *Definition
+	StructFields []*deepparser.StField
+	Inspect      *deepparser.Definition
 }
 type typed struct {
 	Type   string
@@ -184,193 +173,6 @@ func (mg *Method) Return() typed {
 		Alias:  alias,
 		AST:    retType,
 	}
-}
-
-type Definition struct {
-	Import   godetector.Import
-	Decl     *ast.GenDecl
-	Type     *ast.TypeSpec
-	TypeName string
-	FS       *token.FileSet
-	FileDir  string
-	File     *ast.File
-}
-
-func findDefinitionFromAst(typeName, alias string, file *ast.File, fileDir string) *Definition {
-	var importDef godetector.Import
-	if alias != "" {
-		v, err := godetector.ResolveImport(alias, file, fileDir)
-		if err != nil {
-			log.Println("failed resolve import for", alias, "from dir", fileDir, ":", err)
-			return nil
-		}
-		importDef = *v
-	} else {
-		v, err := godetector.InspectImportByDir(fileDir)
-		if err != nil {
-			log.Println("failed inspect", fileDir, ":", err)
-			return nil
-		}
-		importDef = *v
-	}
-
-	var fs token.FileSet
-	importFile, err := parser.ParseDir(&fs, importDef.Location, nil, parser.AllErrors)
-	if err != nil {
-		log.Println("failed parse", importDef.Location, ":", err)
-		return nil
-	}
-	for _, packageDefintion := range importFile {
-		for _, packageFile := range packageDefintion.Files {
-			for _, decl := range packageFile.Decls {
-				if v, ok := decl.(*ast.GenDecl); ok && v.Tok == token.TYPE {
-					for _, spec := range v.Specs {
-						if st, ok := spec.(*ast.TypeSpec); ok && st.Name.Name == typeName {
-							return &Definition{
-								Import:   importDef,
-								Decl:     v,
-								Type:     st,
-								FS:       &fs,
-								TypeName: typeName,
-								FileDir:  importDef.Location,
-								File:     packageFile,
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-	return nil
-}
-
-func findDefinitionFromImport(importPath string, typeName string) *Definition {
-	defDir, err := godetector.FindPackageDefinitionDir(importPath, ".")
-	if err != nil {
-		log.Println("failed find package definition", importPath, ":", err)
-		return nil
-	}
-	importDef, err := godetector.InspectImportByDir(defDir)
-	if err != nil {
-		log.Println("failed inspect", defDir, ":", err)
-		return nil
-	}
-
-	var fs token.FileSet
-	importFile, err := parser.ParseDir(&fs, importDef.Location, nil, parser.AllErrors)
-	if err != nil {
-		log.Println("failed parse", importDef.Location, ":", err)
-		return nil
-	}
-	for _, packageDefintion := range importFile {
-		for _, packageFile := range packageDefintion.Files {
-			for _, decl := range packageFile.Decls {
-				if v, ok := decl.(*ast.GenDecl); ok && v.Tok == token.TYPE {
-					for _, spec := range v.Specs {
-						if st, ok := spec.(*ast.TypeSpec); ok && st.Name.Name == typeName {
-							return &Definition{
-								Import:   *importDef,
-								Decl:     v,
-								Type:     st,
-								FS:       &fs,
-								TypeName: typeName,
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-	return nil
-}
-
-func (def *Definition) isStruct() bool {
-	_, ok := def.Type.Type.(*ast.StructType)
-	return ok
-}
-
-func (def *Definition) StructFields() []*stField {
-	st, ok := def.Type.Type.(*ast.StructType)
-	if !ok {
-		return nil
-	}
-	if st.Fields == nil || len(st.Fields.List) == 0 {
-		return nil
-	}
-	var ans []*stField
-	for _, field := range st.Fields.List {
-		if len(field.Names) == 0 {
-			continue
-		}
-		if !ast.IsExported(field.Names[0].Name) {
-			continue
-		}
-		var comment string
-		if field.Comment != nil {
-			comment = field.Comment.Text()
-		}
-		f := &stField{
-			Name:    field.Names[0].Name,
-			Tag:     field.Names[0].Name,
-			Type:    astPrint(field.Type, def.FS),
-			Comment: comment,
-			AST:     field,
-		}
-		ans = append(ans, f)
-		if field.Tag == nil {
-			continue
-		}
-		s := field.Tag.Value
-		s = s[1 : len(s)-1]
-		val, err := structtag.Parse(s)
-		if err != nil {
-			log.Println("failed parse tags:", err)
-			continue
-		}
-
-		if jsTag, err := val.Get("json"); err == nil && jsTag != nil {
-			if jsTag.Name != "-" {
-				f.Tag = jsTag.Name
-			}
-			f.Omitempty = jsTag.HasOption("omitempty")
-		}
-	}
-	return ans
-}
-
-func (def *Definition) removeJSONIgnoredFields() {
-	st, ok := def.Type.Type.(*ast.StructType)
-	if !ok {
-		return
-	}
-	if st.Fields == nil || len(st.Fields.List) == 0 {
-		return
-	}
-	var filtered []*ast.Field
-	for _, field := range st.Fields.List {
-		filtered = append(filtered, field)
-		if field.Tag == nil {
-			continue
-		}
-		s := field.Tag.Value
-		s = s[1 : len(s)-1]
-		val, err := structtag.Parse(s)
-		if err != nil {
-			log.Println("failed parse tags:", err)
-			continue
-		}
-		if !ast.IsExported(field.Names[0].Name) {
-			filtered = filtered[:len(filtered)-1]
-			continue
-		}
-
-		if jsTag, err := val.Get("json"); err == nil && jsTag != nil {
-			if jsTag.Value() == "-" {
-				filtered = filtered[:len(filtered)-1]
-			}
-		}
-	}
-	st.Fields.List = filtered
 }
 
 func detectPackageInType(t ast.Expr) string {
