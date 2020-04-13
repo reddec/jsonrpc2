@@ -4,9 +4,11 @@ import (
 	"github.com/dave/jennifer/jen"
 	"github.com/jessevdk/go-flags"
 	"github.com/reddec/jsonrpc2/cmd/jsonrpc2-gen/internal"
+	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -15,7 +17,7 @@ const version = "dev"
 type Config struct {
 	File        string `short:"i" long:"file" env:"GOFILE" description:"File to scan" required:"yes"`
 	Interface   string `short:"I" long:"interface" env:"INTERFACE" description:"Interface to wrap" required:"yes"`
-	Namespace   string `long:"namespace" env:"NAMESPACE" description:"Custom namespace for functions. If not defined - interface name will be used" default:""`
+	Namespace   string `short:"N" long:"namespace" env:"NAMESPACE" description:"Custom namespace for functions. If not defined - interface name will be used" default:""`
 	Wrapper     string `short:"w" long:"wrapper" env:"WRAPPER" description:"Wrapper function name. If not defined - Register<interface> name will be used" default:""`
 	Output      string `short:"o" long:"output" env:"OUTPUT" description:"Generated output destination (- means STDOUT)" default:"-"`
 	Package     string `short:"p" long:"package" env:"PACKAGE" description:"Package name (can be override by output dir)" default:"events"`
@@ -27,6 +29,7 @@ type Config struct {
 	Case        string `short:"c" long:"case" env:"CASE" description:"Method name case style" default:"keep" choice:"keep" choice:"camel" choice:"pascal" choice:"snake" choice:"kebab"`
 	URL         string `long:"url" env:"URL" description:"URL for examples in documentation" default:"https://example.com/api"`
 	Interceptor bool   `short:"C" long:"interceptor" env:"INTERCEPTOR" description:"add interceptor for each method"`
+	Config      string `short:"f" long:"config" env:"CONFIG" description:"Location to configuration file"`
 }
 
 func (c Config) GetCase() internal.Case {
@@ -53,6 +56,12 @@ func main() {
 	_, err := parser.Parse()
 	if err != nil {
 		os.Exit(1)
+	}
+	if config.Config != "" {
+		err = config.ApplyConfigFile()
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	if config.Namespace == "" {
@@ -84,7 +93,7 @@ func main() {
 	out.Add(result.Code)
 	var output = os.Stdout
 	if config.Output != "-" {
-		output, err = os.Create(config.Output)
+		output, err = os.Create(result.MustRender(config.Output))
 		if err != nil {
 			panic(err)
 		}
@@ -98,33 +107,75 @@ func main() {
 	}
 
 	if config.Doc != "" {
-		err = ioutil.WriteFile(config.Doc, []byte(result.WithDocAddress(config.URL).GenerateMarkdown()), 0755)
+		err = writeFile(result.MustRender(config.Doc), []byte(result.WithDocAddress(config.URL).GenerateMarkdown()), 0755)
 		if err != nil {
 			panic(err)
 		}
 	}
 	if config.Python != "" {
-		err = ioutil.WriteFile(config.Python, []byte(result.WithDocAddress(config.URL).GeneratePython()), 0755)
+		err = writeFile(result.MustRender(config.Python), []byte(result.WithDocAddress(config.URL).GeneratePython()), 0755)
 		if err != nil {
 			panic(err)
 		}
 	}
 	if config.JS != "" {
-		err = ioutil.WriteFile(config.JS, []byte(result.WithDocAddress(config.URL).GenerateJS()), 0755)
+		err = writeFile(result.MustRender(config.JS), []byte(result.WithDocAddress(config.URL).GenerateJS()), 0755)
 		if err != nil {
 			panic(err)
 		}
 	}
 	if config.TS != "" {
-		err = ioutil.WriteFile(config.TS, []byte(result.WithDocAddress(config.URL).GenerateTS()), 0755)
+		err = writeFile(result.MustRender(config.TS), []byte(result.WithDocAddress(config.URL).GenerateTS()), 0755)
 		if err != nil {
 			panic(err)
 		}
 	}
 	if config.Postman != "" {
-		err = ioutil.WriteFile(config.Postman, []byte(result.WithDocAddress(config.URL).GeneratePostman()), 0755)
+		err = writeFile(result.MustRender(config.Postman), []byte(result.WithDocAddress(config.URL).GeneratePostman()), 0755)
 		if err != nil {
 			panic(err)
 		}
 	}
+}
+
+func (c *Config) ApplyConfigFile() error {
+	abs, err := filepath.Abs(c.Config)
+	if err != nil {
+		return err
+	}
+	data, err := ioutil.ReadFile(c.Config)
+	if err != nil {
+		return err
+	}
+	err = yaml.Unmarshal(data, c)
+	if err != nil {
+		return err
+	}
+	root := filepath.Dir(abs)
+	if c.Output != "-" {
+		c.Output = resolvePath(root, c.Output)
+	}
+	c.Doc = resolvePath(root, c.Doc)
+	c.Python = resolvePath(root, c.Python)
+	c.JS = resolvePath(root, c.JS)
+	c.TS = resolvePath(root, c.TS)
+	c.Postman = resolvePath(root, c.Postman)
+	return nil
+}
+
+func resolvePath(root, path string) string {
+	if path == "" {
+		return path
+	}
+	if !filepath.IsAbs(path) && !strings.HasPrefix(path, "./") {
+		return filepath.Join(root, path)
+	}
+	return path
+}
+
+func writeFile(path string, content []byte, perm os.FileMode) error {
+	if err := os.MkdirAll(filepath.Dir(path), perm); err != nil {
+		return err
+	}
+	return ioutil.WriteFile(path, content, perm)
 }

@@ -3,6 +3,7 @@ package internal
 import (
 	"bytes"
 	"fmt"
+	"github.com/Masterminds/sprig"
 	"github.com/dave/jennifer/jen"
 	"github.com/iancoleman/strcase"
 	"go/ast"
@@ -11,6 +12,7 @@ import (
 	"go/token"
 	"path/filepath"
 	"strconv"
+	"text/template"
 )
 
 const Import = "github.com/reddec/jsonrpc2"
@@ -58,6 +60,13 @@ func (wg *WrapperGenerator) Qual(mg *Method) string {
 	return name
 }
 
+func (wg *WrapperGenerator) Name() string {
+	if wg.Namespace != "" {
+		return wg.Namespace
+	}
+	return wg.TypeName
+}
+
 type generationResult struct {
 	Code        jen.Code
 	Generator   WrapperGenerator
@@ -98,7 +107,7 @@ func (wg *WrapperGenerator) generateFunction(info *Interface, fs *token.FileSet,
 		qual = jen.Qual(importPath, wg.TypeName)
 	}
 	var usedMethods []*Method
-	code := jen.Func().Id(wg.FuncName).ParamsFunc(func(params *jen.Group) {
+	code := jen.Func().Id(wg.MustRender(wg.FuncName)).ParamsFunc(func(params *jen.Group) {
 		params.Id("router").Op("*").Qual(Import, "Router")
 		params.Id("wrap").Add(qual)
 		if wg.Interceptor {
@@ -164,6 +173,16 @@ func (wg *WrapperGenerator) generateLambda(method *Method, fs *token.FileSet, fi
 			}
 		})
 	})
+}
+
+func (wg *WrapperGenerator) MustRender(templateText string) string {
+	t := template.Must(template.New("").Funcs(sprig.TxtFuncMap()).Parse(templateText))
+	var out bytes.Buffer
+	err := t.Execute(&out, wg)
+	if err != nil {
+		panic(err)
+	}
+	return out.String()
 }
 
 func astPrint(t ast.Node, fs *token.FileSet) string {

@@ -37,3 +37,13 @@ func (result *generationResult) WsAddr() string {
 	u.Scheme = "ws"
 	return u.String()
 }
+
+func (result *generationResult) MustRender(templateText string) string {
+	t := template.Must(template.New("").Funcs(sprig.TxtFuncMap()).Parse(templateText))
+	var out bytes.Buffer
+	err := t.Execute(&out, result)
+	if err != nil {
+		panic(err)
+	}
+	return out.String()
+}
