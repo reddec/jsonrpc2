@@ -10,6 +10,43 @@ import (
 )
 
 func (result *generationResult) GeneratePython() string {
+	var reserved = []string{
+		"and",
+		"except",
+		"lambda",
+		"with",
+		"as",
+		"finally",
+		"nonlocal",
+		"while",
+		"assert",
+		"false",
+		"None",
+		"yield",
+		"break",
+		"for",
+		"not",
+		"class",
+		"from",
+		"or",
+		"continue",
+		"global",
+		"pass",
+		"def",
+		"if",
+		"raise",
+		"del",
+		"import",
+		"return",
+		"elif",
+		"in",
+		"True",
+		"else",
+		"is",
+		"try",
+		"async",
+		"await",
+	}
 	var python Python
 	python.BeforeInspect = deepparser.RemoveJsonIgnoredFields
 	fm := sprig.TxtFuncMap()
@@ -30,6 +67,14 @@ func (result *generationResult) GeneratePython() string {
 	}
 	fm["isdefined"] = func(st *deepparser.StField) bool {
 		return python.isDefined(deepparser.RebuildTypeNameWithoutPackage(st.AST.Type))
+	}
+	fm["escape"] = func(name string) string {
+		for _, v := range reserved {
+			if v == name {
+				return "_" + name
+			}
+		}
+		return name
 	}
 	fm["to_json"] = func(field interface{}, param string) string {
 		var st ast.Expr

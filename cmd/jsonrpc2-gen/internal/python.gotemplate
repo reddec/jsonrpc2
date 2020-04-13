@@ -8,13 +8,13 @@ from dataclasses import dataclass
 @dataclass
 class {{.TypeName}}:
 {{- range .StructFields}}
-    {{.Name | snakecase}}: '{{. | python}}'
+    {{.Name | snakecase | escape}}: '{{. | python}}'
 {{- end}}
 
     def to_json(self) -> dict:
         return {
     {{- range .StructFields}}
-            "{{.Tag}}": {{to_json . (print "self." (.Name | snakecase) )}},
+            "{{.Tag}}": {{to_json . (print "self." (.Name | snakecase | escape) )}},
     {{- end}}
         }
 
@@ -22,7 +22,7 @@ class {{.TypeName}}:
     def from_json(payload: dict) -> '{{.TypeName}}':
         return {{.TypeName}}(
 {{- range .StructFields}}
-                {{.Name | snakecase}}={{from_json . (print "payload['" .Tag "']" )}},
+                {{.Name | snakecase | escape}}={{from_json . (print "payload['" .Tag "']" )}},
 {{- end}}
         )
 {{end}}
