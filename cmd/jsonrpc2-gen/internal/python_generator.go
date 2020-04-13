@@ -69,7 +69,7 @@ func (result *generationResult) GeneratePython() string {
 		}
 
 		if python.isBytes(st) {
-			return "decodebytes(" + param + ")"
+			return "decodebytes(" + param + ".encode())"
 		}
 		subType := deepparser.RebuildTypeNameWithoutPackage(st)
 		if !python.isDefined(subType) {
