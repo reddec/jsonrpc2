@@ -73,10 +73,13 @@ func (result *generationResult) GeneratePython() string {
 		}
 		subType := deepparser.RebuildTypeNameWithoutPackage(st)
 		if !python.isDefined(subType) {
+			if isArray(st) {
+				return param + " or []"
+			}
 			return param
 		}
 		if isArray(st) {
-			return "[" + subType + ".from_json(x) for x in " + param + "]"
+			return "[" + subType + ".from_json(x) for x in (" + param + " or [])]"
 		}
 		return subType + ".from_json(" + param + ")"
 	}
@@ -170,7 +173,7 @@ func (py *Python) MapType(t ast.Expr) string {
 
 	if arr, ok := t.(*ast.ArrayType); ok {
 		py.AddModule("typing", "List", "Optional")
-		return "Optional[List[" + py.MapType(arr.Elt) + "]]"
+		return "List[" + py.MapType(arr.Elt) + "]"
 	}
 	py.AddModule("typing", "Any")
 	return "Any"
