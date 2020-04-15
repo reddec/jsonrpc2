@@ -121,7 +121,7 @@ func (result *generationResult) GeneratePython() string {
 		}
 
 		if python.isBytes(st) {
-			return "decodebytes(" + param + ".encode())"
+			return "decodebytes((" + param + " or b'').encode())"
 		}
 		subType := deepparser.RebuildTypeNameWithoutPackage(st)
 		if !python.isDefined(subType) {
