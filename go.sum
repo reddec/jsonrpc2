@@ -40,6 +40,12 @@ github.com/reddec/godetector v0.0.0-20200413150015-4bddab467ce6 h1:LfFKLwU20Coul
 github.com/reddec/godetector v0.0.0-20200413150015-4bddab467ce6/go.mod h1:47QGzbwoSJdxG2oJhWeHKSaADUTekD4pfU47Pt8x/Cg=
 github.com/reddec/godetector v0.0.0-20200413151051-da19aced292e h1:oLYmvpY23WXgLrK3MHbX/ceCMadUdfp9uH/IyyIRDEY=
 github.com/reddec/godetector v0.0.0-20200413151051-da19aced292e/go.mod h1:47QGzbwoSJdxG2oJhWeHKSaADUTekD4pfU47Pt8x/Cg=
+github.com/reddec/godetector v0.0.0-20200417075515-5ae83b26180b h1:d3Reo41eB0Yv2nVUu61xSAPSvpvb5UuGtwxe5FVCDDg=
+github.com/reddec/godetector v0.0.0-20200417075515-5ae83b26180b/go.mod h1:CzQ4Kf0yOsagWbBdC+5pRPJxMnL1uO3/7DimjqEr6Q8=
+github.com/reddec/godetector v0.0.0-20200417081604-ea4fa7db4f6c h1:fFazLQ1OJx4lxGiavi6OpXQLP2Sw8r7zOGglq7Yj2Ow=
+github.com/reddec/godetector v0.0.0-20200417081604-ea4fa7db4f6c/go.mod h1:CzQ4Kf0yOsagWbBdC+5pRPJxMnL1uO3/7DimjqEr6Q8=
+github.com/reddec/godetector v0.0.0-20200417082800-1036be5d943a h1:XQPSJxC36O96riN8ZLk4nmwbYJ6V6TC5XV1RiE6HdHU=
+github.com/reddec/godetector v0.0.0-20200417082800-1036be5d943a/go.mod h1:CzQ4Kf0yOsagWbBdC+5pRPJxMnL1uO3/7DimjqEr6Q8=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/testify v1.5.1 h1:nOGnQDM7FYENwehXlg/kFVnos3rEvtKTjRvOWSzb6H4=
 github.com/stretchr/testify v1.5.1/go.mod h1:5W2xD1RspED5o8YsWQXVCued0rvSQ+mT+I5cxcmMvtA=
