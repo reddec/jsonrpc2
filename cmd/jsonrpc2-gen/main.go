@@ -28,6 +28,8 @@ type Config struct {
 	Python      string   `short:"P" long:"python" env:"PYTHON" description:"Generate Python client" `
 	JS          string   `long:"js" env:"JS" description:"Generate JS client"`
 	TS          string   `long:"ts" env:"TS" description:"Generate TypeScript client"`
+	GO          string   `long:"go" env:"GO" description:"Generate independent Golang client"`
+	GoPackage   string   `long:"go-package" env:"GO_PACKAGE" description:"Destination go package" default:"client" yaml:"go_package"`
 	Postman     string   `long:"postman" env:"POSTMAN" description:"Generate Postman collection"`
 	Case        string   `short:"c" long:"case" env:"CASE" description:"Method name case style" default:"keep" choice:"keep" choice:"camel" choice:"pascal" choice:"snake" choice:"kebab"`
 	URL         string   `long:"url" env:"URL" description:"URL for examples in documentation" default:"https://example.com/api"`
@@ -149,6 +151,12 @@ func processInterface(config Config, interfaceName string, appendCli bool) {
 			panic(err)
 		}
 	}
+	if config.GO != "" {
+		err = writeFile(result.MustRender(config.GO), []byte(result.WithDocAddress(config.URL).GenerateGo(result.MustRender(config.GoPackage))), 0755)
+		if err != nil {
+			panic(err)
+		}
+	}
 }
 
 func (c *Config) ApplyConfigFile() error {
@@ -172,6 +180,7 @@ func (c *Config) ApplyConfigFile() error {
 	c.Python = resolvePath(root, c.Python)
 	c.JS = resolvePath(root, c.JS)
 	c.TS = resolvePath(root, c.TS)
+	c.GO = resolvePath(root, c.GO)
 	c.Postman = resolvePath(root, c.Postman)
 	return nil
 }

@@ -6,6 +6,9 @@ import (
 )
 
 type Profile struct {
+	Year *bg.Int
+	Time time.Time
+	Name string
 }
 
 // General user profile access
@@ -13,5 +16,5 @@ type User interface {
 	// Get user profile
 	Profile(token string, at time.Time, val *bg.Int) (*Profile, error)
 	privateSum(a, b int) (int, error)
-	Latest(times []*time.Time) (time.Time, error)
+	Latest(times []*time.Time, num int) (time.Time, error)
 }
