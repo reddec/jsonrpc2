@@ -1,4 +1,4 @@
-import requests
+from aiohttp import client
 {{with definitions}}
 from dataclasses import dataclass
 {{- end}}
@@ -66,27 +66,27 @@ class {{.Service.Name}}Client:
     {{.Service.Comment}}
     """
 
-    def __init__(self, base_url: str = '{{.DocAddr}}', session: Optional[requests.Session] = None):
+    def __init__(self, base_url: str = '{{.DocAddr}}', session: Optional[client.ClientSession] = None):
         self.__url = base_url
         self.__id = 1
-        self.__session = session or requests
+        self.__request = session.request if session is not None else client.request
 
     def __next_id(self):
         self.__id += 1
         return self.__id
 {{range $index, $method := .UsedMethods}}
-    def {{$method.Name | snakecase}}(self{{- range $index, $arg := $method.Args}}, {{$arg.Name | snakecase}}: {{$arg | python}}{{end}}) -> {{$method.Return | python}}:
+    async def {{$method.Name | snakecase}}(self{{- range $index, $arg := $method.Args}}, {{$arg.Name | snakecase}}: {{$arg | python}}{{end}}) -> {{$method.Return | python}}:
         """
         {{$method.Comment}}
         """
-        response = self.__session.post(self.__url, json={
+        response = await self.__request('POST', self.__url, json={
             "jsonrpc": "2.0",
             "method": "{{$.Generator.Qual $method}}",
             "id": self.__next_id(),
             "params": [{{- range $index, $arg := $method.Args}}{{to_json .  ($arg.Name | snakecase)}}, {{end}}]
         })
-        assert response.ok, str(response.status_code) + " " + str(response.reason)
-        payload = response.json()
+        assert response.status // 100 == 2, str(response.status) + " " + str(response.reason)
+        payload = await response.json()
         if 'error' in payload:
             raise {{$.Service.Name}}Error.from_json('{{$method.Name | snakecase}}', payload['error'])
         return {{from_json $method.Return "payload['result']"}}
