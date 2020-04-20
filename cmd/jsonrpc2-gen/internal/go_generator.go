@@ -54,6 +54,15 @@ func (result *generationResult) GenerateGo(pkg string) string {
 	}
 
 	apiClient := result.Service.Name + "Client"
+
+	if result.DocAddr != "" {
+		types.Func().Id("Default").Params().Op("*").Id(apiClient).BlockFunc(func(group *jen.Group) {
+			group.Return().Op("&").Id(apiClient).ValuesFunc(func(init *jen.Group) {
+				init.Id("BaseURL").Op(":").Lit(result.DocAddr)
+			})
+		}).Line().Line()
+	}
+
 	types.Type().Id(apiClient).StructFunc(func(group *jen.Group) {
 		group.Id("BaseURL").String()
 		group.Id("sequence").Uint64()

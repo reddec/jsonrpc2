@@ -18,7 +18,7 @@ import (
 const version = "dev"
 
 type Config struct {
-	File        string   `short:"i" long:"file" env:"GOFILE" description:"File to scan" required:"yes"`
+	File        string   `short:"i" long:"file" env:"GOFILE" description:"File to scan"`
 	Interface   []string `short:"I" long:"interface" env:"INTERFACE" description:"Interface to wrap" required:"yes"`
 	Namespace   string   `short:"N" long:"namespace" env:"NAMESPACE" description:"Custom namespace for functions. If not defined - interface name will be used" default:""`
 	Wrapper     string   `short:"w" long:"wrapper" env:"WRAPPER" description:"Wrapper function name. If not defined - Register<interface> name will be used" default:""`
