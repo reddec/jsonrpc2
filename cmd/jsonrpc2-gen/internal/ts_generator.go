@@ -36,7 +36,25 @@ func (result *generationResult) GenerateTS() string {
 				}
 			}
 		}
-		return tsg.Ordered
+		var ans []*deepparser.Definition
+		for _, d := range tsg.Ordered {
+			if len(d.StructFields()) > 0 {
+				ans = append(ans, d)
+			}
+		}
+		return ans
+	}
+	fm["enums"] = func() []*deepparser.Definition {
+		var ans []*deepparser.Definition
+		for _, d := range tsg.Ordered {
+			if d.IsTypeAlias() {
+				fv := d.FindEnumValues()
+				if len(fv) > 0 {
+					ans = append(ans, d)
+				}
+			}
+		}
+		return ans
 	}
 	t := template.Must(template.New("").Funcs(fm).Parse(string(MustAsset("ts.gotemplate"))))
 	buffer := &bytes.Buffer{}

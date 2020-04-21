@@ -17,6 +17,14 @@ export interface {{.TypeName}} {
 }
 {{end}}
 
+{{range enums}}
+export enum {{.TypeName}} {
+    {{- range .FindEnumValues}}
+    {{.Name}} = {{.Value}},
+    {{- end}}
+}
+{{end}}
+
 // support stuff
 
 
@@ -206,7 +214,7 @@ export class {{.Service.Name}} {
         }
 
         if (data.error) {
-            throw new TincWebError(data.error.message, data.error.code, data.error.data);
+            throw new {{.Service.Name}}Error(data.error.message, data.error.code, data.error.data);
         }
 
         return data.result;
