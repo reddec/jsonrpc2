@@ -5,6 +5,7 @@ import (
 	"github.com/Masterminds/sprig"
 	"github.com/reddec/godetector/deepparser"
 	"go/ast"
+	"sort"
 	"strings"
 	"text/template"
 )
@@ -175,6 +176,7 @@ func (result *generationResult) GeneratePython() string {
 			names = append(names, name)
 		}
 		if len(names) > 0 {
+			sort.Strings(names)
 			imps = append(imps, "from "+imp+" import "+strings.Join(names, ", "))
 		}
 	}
