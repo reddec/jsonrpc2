@@ -28,6 +28,7 @@ type Config struct {
 	Python      string   `short:"P" long:"python" env:"PYTHON" description:"Generate Python client" `
 	JS          string   `long:"js" env:"JS" description:"Generate JS client"`
 	TS          string   `long:"ts" env:"TS" description:"Generate TypeScript client"`
+	TSShimFile  string   `long:"ts-shim-file" yaml:"ts_shim_file" env:"TS_SHIM_FILE" description:"Typescript shim file"`
 	GO          string   `long:"go" env:"GO" description:"Generate independent Golang client"`
 	GoPackage   string   `long:"go-package" env:"GO_PACKAGE" description:"Destination go package" default:"client" yaml:"go_package"`
 	Postman     string   `long:"postman" env:"POSTMAN" description:"Generate Postman collection"`
@@ -140,7 +141,7 @@ func processInterface(config Config, interfaceName string, appendCli bool) {
 		}
 	}
 	if config.TS != "" {
-		err = writeFile(result.MustRender(config.TS), []byte(result.WithDocAddress(config.URL).GenerateTS()), 0755)
+		err = writeFile(result.MustRender(config.TS), []byte(result.WithDocAddress(config.URL).GenerateTS(config.TSShimFile)), 0755)
 		if err != nil {
 			panic(err)
 		}
@@ -180,6 +181,7 @@ func (c *Config) ApplyConfigFile() error {
 	c.Python = resolvePath(root, c.Python)
 	c.JS = resolvePath(root, c.JS)
 	c.TS = resolvePath(root, c.TS)
+	c.TSShimFile = resolvePath(root, c.TSShimFile)
 	c.GO = resolvePath(root, c.GO)
 	c.Postman = resolvePath(root, c.Postman)
 	return nil

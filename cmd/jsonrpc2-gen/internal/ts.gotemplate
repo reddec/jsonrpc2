@@ -10,19 +10,27 @@ export class {{.Service.Name}}Error extends Error {
 }
 
 {{range definitions}}
+{{- with . | shim}}
+export {{.Content}}
+{{- else}}
 export interface {{.TypeName}} {
     {{- range .StructFields}}
     {{.Tag}}: {{. | typescript}}
     {{- end}}
 }
+{{- end}}
 {{end}}
 
 {{range enums}}
+{{- with . | shim}}
+export {{.Content}}
+{{- else}}
 export enum {{.TypeName}} {
     {{- range .FindEnumValues}}
     {{.Name}} = {{.Value}},
     {{- end}}
 }
+{{- end}}
 {{end}}
 
 // support stuff

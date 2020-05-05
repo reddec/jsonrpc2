@@ -9,7 +9,7 @@ import (
 	"text/template"
 )
 
-func (result *generationResult) GenerateTS() string {
+func (result *generationResult) GenerateTS(shimFiles ...string) string {
 	var tsg tsGenerator
 	tsg.BeforeInspect = deepparser.RemoveJsonIgnoredFields
 	fm := sprig.TxtFuncMap()
@@ -56,6 +56,25 @@ func (result *generationResult) GenerateTS() string {
 		}
 		return ans
 	}
+	fm["shim"] = func(def *deepparser.Definition) *typeShim {
+		return tsg.FindShim(def.Import.Path + "@" + def.TypeName)
+	}
+	tsg.Shim(typeShim{
+		Qual:    "time@Duration",
+		Content: "type Duration = string; // suffixes: ns, us, ms, s, m, h",
+	})
+	tsg.Shim(typeShim{
+		Qual:    "time@Time",
+		Content: "type Time = string;",
+	})
+	for _, file := range shimFiles {
+		if file != "" {
+			err := tsg.ShimFromYamlFile(file)
+			if err != nil {
+				panic(err)
+			}
+		}
+	}
 	t := template.Must(template.New("").Funcs(fm).Parse(string(MustAsset("ts.gotemplate"))))
 	buffer := &bytes.Buffer{}
 	err := t.Execute(buffer, result)
@@ -67,6 +86,7 @@ func (result *generationResult) GenerateTS() string {
 
 type tsGenerator struct {
 	deepparser.Typer
+	typesShim
 }
 
 func (tsg *tsGenerator) mapBase(typeName string) string {
