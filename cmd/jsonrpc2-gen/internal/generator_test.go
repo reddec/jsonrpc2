@@ -1,8 +1,10 @@
 package internal
 
 import (
+	"fmt"
 	"github.com/dave/jennifer/jen"
 	"os"
+	"testing"
 )
 
 func ExampleGenerate() {
@@ -70,5 +72,20 @@ func ExampleGenerate() {
 	//
 	//	return []string{"User.Profile", "User.Latest"}
 	//}
+
+}
+
+func TestGenerateKtor(t *testing.T) {
+	gen := WrapperGenerator{
+		TypeName:  "User",
+		FuncName:  "RegisterUser",
+		Namespace: "User",
+	}
+
+	result, err := gen.Generate("../../../example/gen.go")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(result.GenerateKtor())
 
 }

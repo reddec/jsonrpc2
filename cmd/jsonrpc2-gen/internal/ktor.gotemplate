@@ -1,0 +1,49 @@
+import kotlinx.serialization.*
+import kotlinx.serialization.json.*
+
+{{range $defIndex, $def := definitions}}
+@Serializable
+data class {{$def.TypeName}}({{- range $index, $field := $def.StructFields}}
+    {{- if gt $index 0}},{{- end}}
+    @SerialName("{{$field.Tag}}")
+    var {{$field.Name | untitle}}: {{$field | kotlin}} = {{$field | kotlinDefault}}
+    {{- end}}
+) {
+    companion object {
+        fun default() = {{$def.TypeName}}()
+    }
+}
+{{end}}
+
+
+{{range $index, $enum := enums}}
+@Serializable
+enum class {{$enum.TypeName}}(val value: {{$enum.Type | kotlin}}) {
+    {{- range $index, $value := .FindEnumValues}}
+    {{$value.Name}}({{$value.Value}}),
+    {{- end}}
+    UNKNOWN({{$enum.Type | kotlinDefault}});
+
+    @Serializer(forClass = {{$enum.TypeName}}::class)
+    companion object enumSerializer {
+        override val descriptor: SerialDescriptor
+            get() = PrimitiveDescriptor("{{$enum.TypeName}}", PrimitiveKind.{{$enum.Type | kotlin | upper}})
+
+        override fun deserialize(decoder: Decoder): {{$enum.TypeName}} {
+            return when (decoder.decode{{$enum.Type | kotlin}}()) {
+                {{- range $index, $value := $enum.FindEnumValues}}
+                {{$value.Value}}.to{{$enum.Type | kotlin}}() -> {{$value.Name}}
+                {{- end}}
+                else -> UNKNOWN
+            }
+        }
+
+        override fun serialize(encoder: Encoder, value: {{$enum.TypeName}}) {
+           encoder.encode{{$enum.Type | kotlin}}(value.value)
+        }
+
+        fun default() = UNKNOWN
+    }
+
+}
+{{end}}
