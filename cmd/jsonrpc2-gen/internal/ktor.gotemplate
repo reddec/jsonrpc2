@@ -92,7 +92,7 @@ class {{.Service.Name}}Client {
     /*
     {{$method.Comment}}
     */
-    suspend fun {{$method.Name | untitle}}({{- range $index, $arg := $method.Args}}{{if gt $index 0}}, {{end}}{{$arg.Name | untitle | escape}} :{{$arg | kotlin}}{{end}}): {{$method.Return | kotlin}} {
+    suspend fun {{$method.Name | untitle}}({{- range $index, $arg := $method.Args}}{{if gt $index 0}}, {{end}}{{$arg.Name | untitle | escape}} :{{$arg | kotlin}}{{end}}): {{$method.Return | kotlin | replace "?" ""}} {
         val request = Request(sequence.addAndGet(1L), "{{$.Generator.Qual $method}}", arrayOf({{- range $index, $arg := $method.Args}}{{if gt $index 0}}, {{end}}{{$arg.Name | untitle| escape}}{{end}}))
          val response = session.post<Response<{{$method.Return | kotlin}}>> {
             url(apiURL)
