@@ -9,7 +9,7 @@ import (
 	"text/template"
 )
 
-func (result *generationResult) GenerateKtor() string {
+func (result *generationResult) GenerateKtor(shimFiles ...string) string {
 	var reservedKeywords = []string{
 		"as", "class", "break", "continue", "do", "else", "for", "fun", "false", "if",
 		"in", "interface", "super", "return", "object", "package", "null", "is", "try",
@@ -110,6 +110,14 @@ func (result *generationResult) GenerateKtor() string {
 		Content:    "java.math.BigInteger",
 		Initialize: "java.math.BigInteger.ZERO",
 	})
+	for _, file := range shimFiles {
+		if file != "" {
+			err := typer.ShimFromYamlFile(file)
+			if err != nil {
+				panic(err)
+			}
+		}
+	}
 	t := template.Must(template.New("").Funcs(fm).Parse(string(MustAsset("ktor.gotemplate"))))
 	buffer := &bytes.Buffer{}
 	err := t.Execute(buffer, result)

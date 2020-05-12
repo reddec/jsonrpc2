@@ -137,3 +137,28 @@ Get user profile
 |----------|------|------|
 | 0 | token | `string` |
 ```
+
+
+## KTOR (kotlin) generator
+
+* Supports `time/Time`
+* (TBD) `time/Duration`
+
+
+Gradle requirements
+
+
+```groovy
+
+def ktor_version = '1.3.1'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation("io.ktor:ktor-client-cio:$ktor_version") // <-- you can choose another
+    implementation("io.ktor:ktor-client-gson:$ktor_version")
+}
+
+```
