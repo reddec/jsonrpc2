@@ -77,12 +77,20 @@ func ExampleGenerate() {
 
 func TestGenerateKtor(t *testing.T) {
 	gen := WrapperGenerator{
-		TypeName:  "User",
-		FuncName:  "RegisterUser",
-		Namespace: "User",
+		TypeName: "User",
+		FuncName: "Register",
 	}
-
-	result, err := gen.Generate("../../../example/gen.go")
+	file := "../../../example/gen.go"
+	if v := os.Getenv("KTOR_FILE"); v != "" {
+		file = v
+	}
+	if t := os.Getenv("KTOR_TYPE"); t != "" {
+		gen.TypeName = t
+	}
+	if ns := os.Getenv("KTOR_NS"); ns != "" {
+		gen.Namespace = ns
+	}
+	result, err := gen.Generate(file)
 	if err != nil {
 		panic(err)
 	}

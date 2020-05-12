@@ -146,7 +146,10 @@ func (tsg *ktorGenerator) mapBase(typeName string) string {
 	if typeName == "bool" {
 		return "Boolean"
 	}
-	return typeName
+	if tsg.isDefined(typeName) {
+		return typeName
+	}
+	return "Any"
 }
 
 func (tsg *ktorGenerator) Default(t ast.Expr) string {
@@ -184,17 +187,17 @@ func (tsg *ktorGenerator) MapType(t ast.Expr) string {
 		return tsg.mapBase(v.Name)
 	}
 	if acc, ok := t.(*ast.SelectorExpr); ok {
-		return acc.Sel.Name
+		return tsg.MapType(acc.Sel)
 	}
 	if ptr, ok := t.(*ast.StarExpr); ok {
-		return tsg.MapType(ptr.X)
+		return tsg.MapType(ptr.X) + "?"
 	}
 
 	if arr, ok := t.(*ast.ArrayType); ok {
 		return "List<" + tsg.MapType(arr.Elt) + ">"
 	}
 
-	return "any"
+	return "Any"
 }
 
 func (tsg *ktorGenerator) MapTyped(t typed) string {
@@ -220,4 +223,13 @@ func (tsg *ktorGenerator) MapField(st *deepparser.StField) string {
 		return tp + "?"
 	}
 	return tp
+}
+
+func (tsg *ktorGenerator) isDefined(name string) bool {
+	for _, p := range tsg.Ordered {
+		if p.TypeName == name && shouldBeDefined(p) {
+			return true
+		}
+	}
+	return false
 }
