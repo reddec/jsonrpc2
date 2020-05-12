@@ -1,14 +1,29 @@
-import kotlinx.serialization.*
-import kotlinx.serialization.json.*
+import com.google.gson.*
+import com.google.gson.annotations.SerializedName
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.HttpClientEngine
+import io.ktor.client.engine.HttpClientEngineFactory
+import io.ktor.client.engine.cio.CIO
+import io.ktor.client.features.json.GsonSerializer
+import io.ktor.client.features.json.JsonFeature
+import io.ktor.client.request.post
+import io.ktor.client.request.url
+import io.ktor.http.ContentType
+import io.ktor.http.contentType
+import io.ktor.util.KtorExperimentalAPI
+import java.io.Serializable
+import java.lang.reflect.Type
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.util.concurrent.atomic.AtomicLong
 
 {{range $defIndex, $def := definitions}}
-@Serializable
 data class {{$def.TypeName}}({{- range $index, $field := $def.StructFields}}
     {{- if gt $index 0}},{{- end}}
-    @SerialName("{{$field.Tag}}")
-    var {{$field.Name | untitle}}: {{$field | kotlin}} = {{$field | kotlinDefault}}
+    @SerializedName("{{$field.Tag}}")
+    var {{$field.Name | untitle | escape}}: {{$field | kotlin}} = {{$field | kotlinDefault}}
     {{- end}}
-) {
+): Serializable {
     companion object {
         fun default() = {{$def.TypeName}}()
     }
@@ -17,33 +32,108 @@ data class {{$def.TypeName}}({{- range $index, $field := $def.StructFields}}
 
 
 {{range $index, $enum := enums}}
-@Serializable
 enum class {{$enum.TypeName}}(val value: {{$enum.Type | kotlin}}) {
     {{- range $index, $value := .FindEnumValues}}
+    @SerializedName({{$value.Value | kotlinString}})
     {{$value.Name}}({{$value.Value}}),
     {{- end}}
     UNKNOWN({{$enum.Type | kotlinDefault}});
 
-    @Serializer(forClass = {{$enum.TypeName}}::class)
-    companion object enumSerializer {
-        override val descriptor: SerialDescriptor
-            get() = PrimitiveDescriptor("{{$enum.TypeName}}", PrimitiveKind.{{$enum.Type | kotlin | upper}})
-
-        override fun deserialize(decoder: Decoder): {{$enum.TypeName}} {
-            return when (decoder.decode{{$enum.Type | kotlin}}()) {
-                {{- range $index, $value := $enum.FindEnumValues}}
-                {{$value.Value}}.to{{$enum.Type | kotlin}}() -> {{$value.Name}}
-                {{- end}}
-                else -> UNKNOWN
-            }
-        }
-
-        override fun serialize(encoder: Encoder, value: {{$enum.TypeName}}) {
-           encoder.encode{{$enum.Type | kotlin}}(value.value)
-        }
-
+    companion object {
         fun default() = UNKNOWN
     }
 
 }
 {{end}}
+
+/*
+{{.Service.Comment}}
+*/
+class {{.Service.Name}}Client {
+    private val sequence = AtomicLong(0L)
+    private val session: HttpClient
+    private val apiURL: String
+
+    @KtorExperimentalAPI
+    constructor(api: String = "{{$.DocAddr}}", engine: HttpClientEngineFactory<*> = CIO) {
+        apiURL = api
+        session = HttpClient(engine) {
+            install(JsonFeature) {
+                serializer = GsonSerializer {
+                    registerTypeAdapter(LocalDateTime::class.java, object : JsonDeserializer<LocalDateTime> {
+                        override fun deserialize(
+                            json: JsonElement,
+                            type: Type,
+                            jsonDeserializationContext: JsonDeserializationContext
+                        ): LocalDateTime {
+                            return LocalDateTime.parse(
+                                json.asJsonPrimitive.asString,
+                                DateTimeFormatter.ISO_OFFSET_DATE_TIME
+                            )
+                        }
+                    })
+                    registerTypeAdapter(LocalDateTime::class.java, object : JsonSerializer<LocalDateTime> {
+                        override fun serialize(
+                            src: LocalDateTime?,
+                            typeOfSrc: Type?,
+                            context: JsonSerializationContext?
+                        ): JsonElement {
+                            if (src == null) {
+                                return JsonNull.INSTANCE
+                            }
+                            return JsonPrimitive(src.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
+                        }
+                    })
+                }
+            }
+        }
+    }
+{{range $index, $method := .UsedMethods}}
+    /*
+    {{$method.Comment}}
+    */
+    suspend fun {{$method.Name | untitle}}({{- range $index, $arg := $method.Args}}{{if gt $index 0}}, {{end}}{{$arg.Name | untitle | escape}} :{{$arg | kotlin}}{{end}}): {{$method.Return | kotlin}} {
+        val request = Request(sequence.addAndGet(1L), "{{$.Generator.Qual $method}}", arrayOf({{- range $index, $arg := $method.Args}}{{if gt $index 0}}, {{end}}{{$arg.Name | untitle| escape}}{{end}}))
+         val response = session.post<Response<{{$method.Return | kotlin}}>> {
+            url(apiURL)
+            contentType(ContentType.Application.Json)
+            body = request
+        }
+        if (response.error != null) {
+            throw response.error
+        }
+        return response.result!!
+    }
+{{end}}
+
+
+     private data class Request(
+        @SerializedName("id")
+        val id: Long,
+        @SerializedName("method")
+        val method: String,
+        @SerializedName("params")
+        val params: Array<Any>,
+        @SerializedName("jsonrpc")
+        val version: String = "2.0"
+    )
+
+    private data class Error(
+        @SerializedName("code")
+        val code: Int,
+        @SerializedName("message")
+        val text: String
+    ) : RuntimeException("${code}: $text") {
+    }
+
+    private data class Response<T>(
+        @SerializedName("id")
+        val id: Long,
+        @SerializedName("error")
+        val error: Error? = null,
+        @SerializedName("result")
+        val result: T? = null
+    )
+
+
+}

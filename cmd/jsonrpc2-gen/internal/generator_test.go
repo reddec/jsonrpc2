@@ -86,6 +86,6 @@ func TestGenerateKtor(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(result.GenerateKtor())
+	fmt.Println(result.WithDocAddress("http://example.com/api").GenerateKtor())
 
 }

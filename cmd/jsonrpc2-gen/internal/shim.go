@@ -8,8 +8,9 @@ import (
 )
 
 type typeShim struct {
-	Qual    string `yaml:"qual"` // import@type
-	Content string `yaml:"content"`
+	Qual       string `yaml:"qual"` // import@type
+	Content    string `yaml:"content"`
+	Initialize string `yaml:"init"`
 }
 
 func (ts *typeShim) TypeName() string {

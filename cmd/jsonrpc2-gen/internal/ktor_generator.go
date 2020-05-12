@@ -10,6 +10,12 @@ import (
 )
 
 func (result *generationResult) GenerateKtor() string {
+	var reservedKeywords = []string{
+		"as", "class", "break", "continue", "do", "else", "for", "fun", "false", "if",
+		"in", "interface", "super", "return", "object", "package", "null", "is", "try",
+		"throw", "true", "this", "typeof", "typealias", "when", "while", "val", "var",
+	}
+
 	var typer ktorGenerator
 	typer.BeforeInspect = deepparser.RemoveJsonIgnoredFields
 	for _, mth := range result.UsedMethods {
@@ -24,9 +30,9 @@ func (result *generationResult) GenerateKtor() string {
 	fm["kotlin"] = func(field interface{}) string {
 		switch v := field.(type) {
 		case typed:
-			return typer.MapType(v.AST)
+			return typer.MapTyped(v)
 		case arg:
-			return typer.MapType(v.AST)
+			return typer.MapTyped(v.typed)
 		case *ast.TypeSpec:
 			return typer.MapType(v.Type)
 		case *deepparser.StField:
@@ -34,6 +40,23 @@ func (result *generationResult) GenerateKtor() string {
 		default:
 			panic("ktor?")
 		}
+	}
+	fm["kotlinString"] = func(t string) string {
+		if len(t) == 0 {
+			return `""`
+		}
+		if t[0] == '"' {
+			return t
+		}
+		return `"` + t + `"`
+	}
+	fm["escape"] = func(name string) string {
+		for _, k := range reservedKeywords {
+			if k == name {
+				return name + "_"
+			}
+		}
+		return name
 	}
 	fm["kotlinDefault"] = func(field interface{}) string {
 		switch v := field.(type) {
@@ -44,7 +67,7 @@ func (result *generationResult) GenerateKtor() string {
 		case *ast.TypeSpec:
 			return typer.Default(v.Type)
 		case *deepparser.StField:
-			return typer.Default(v.AST.Type)
+			return typer.DefaultField(v)
 		default:
 			panic("ktor?")
 		}
@@ -77,7 +100,16 @@ func (result *generationResult) GenerateKtor() string {
 		}
 		return ans
 	}
-
+	typer.Shim(typeShim{
+		Qual:       "time@Time",
+		Content:    "java.time.LocalDateTime",
+		Initialize: "java.time.LocalDateTime.now()",
+	})
+	typer.Shim(typeShim{
+		Qual:       "math/big@Int",
+		Content:    "java.math.BigInteger",
+		Initialize: "java.math.BigInteger.ZERO",
+	})
 	t := template.Must(template.New("").Funcs(fm).Parse(string(MustAsset("ktor.gotemplate"))))
 	buffer := &bytes.Buffer{}
 	err := t.Execute(buffer, result)
@@ -89,6 +121,7 @@ func (result *generationResult) GenerateKtor() string {
 
 type ktorGenerator struct {
 	deepparser.Typer
+	typesShim
 }
 
 func (tsg *ktorGenerator) mapBase(typeName string) string {
@@ -121,7 +154,7 @@ func (tsg *ktorGenerator) Default(t ast.Expr) string {
 		return "null"
 	}
 	if isArray(t) {
-		return "arrayOf()"
+		return "listOf<" + tsg.MapType(t.(*ast.ArrayType).Elt) + ">()"
 	}
 	typeName := tsg.MapType(t)
 	if typeName == "String" {
@@ -136,6 +169,16 @@ func (tsg *ktorGenerator) Default(t ast.Expr) string {
 	return typeName + ".default()"
 }
 
+func (tsg *ktorGenerator) DefaultField(v *deepparser.StField) string {
+	if v.Definition != nil {
+		shim := tsg.FindShim(v.Definition.Import.Path + "@" + v.Definition.TypeName)
+		if shim != nil {
+			return shim.Initialize
+		}
+	}
+	return tsg.Default(v.AST.Type)
+}
+
 func (tsg *ktorGenerator) MapType(t ast.Expr) string {
 	if v, ok := t.(*ast.Ident); ok {
 		return tsg.mapBase(v.Name)
@@ -148,14 +191,31 @@ func (tsg *ktorGenerator) MapType(t ast.Expr) string {
 	}
 
 	if arr, ok := t.(*ast.ArrayType); ok {
-		return "Array<" + tsg.MapType(arr.Elt) + ">"
+		return "List<" + tsg.MapType(arr.Elt) + ">"
 	}
 
 	return "any"
 }
 
+func (tsg *ktorGenerator) MapTyped(t typed) string {
+	if shim := tsg.FindShim(t.localQual()); shim != nil {
+		return shim.Content
+	}
+	return tsg.MapType(t.AST)
+}
+
 func (tsg *ktorGenerator) MapField(st *deepparser.StField) string {
-	tp := tsg.MapType(st.AST.Type)
+	var tp string
+	if st.Definition != nil {
+		shim := tsg.FindShim(st.Definition.Import.Path + "@" + st.Definition.TypeName)
+		if shim != nil {
+			tp = shim.Content
+		}
+	}
+	if tp == "" {
+		tp = tsg.MapType(st.AST.Type)
+	}
+
 	if st.Omitempty {
 		return tp + "?"
 	}
