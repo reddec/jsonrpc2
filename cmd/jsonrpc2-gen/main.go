@@ -31,7 +31,7 @@ type Config struct {
 	TSShimFile   string   `long:"ts-shim-file" yaml:"ts_shim_file" env:"TS_SHIM_FILE" description:"Typescript shim file"`
 	GO           string   `long:"go" env:"GO" description:"Generate independent Golang client"`
 	GoPackage    string   `long:"go-package" env:"GO_PACKAGE" description:"Destination go package" default:"client" yaml:"go_package"`
-	GoLinked     bool     `long:"go-linked" env:"GO_LINKED" description:"Link Go types instead of copy" yaml:"go_link"`
+	GoLinked     bool     `long:"go-linked" env:"GO_LINKED" description:"Link Go types instead of copy" yaml:"go_linked"`
 	Ktor         string   `long:"ktor" env:"KTOR" description:"KTOR (kotlin) client"`
 	KtorShimFile string   `long:"ktor-shim-file" env:"KTOR_SHIM_FILE" description:"KTOR shims" yaml:"ktor_shim_file"`
 	Postman      string   `long:"postman" env:"POSTMAN" description:"Generate Postman collection"`
