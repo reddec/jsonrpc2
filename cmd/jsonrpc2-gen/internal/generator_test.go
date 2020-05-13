@@ -75,6 +75,19 @@ func ExampleGenerate() {
 
 }
 
+func TestGenerationResult_GenerateGo(t *testing.T) {
+	gen := WrapperGenerator{
+		TypeName: "User",
+		FuncName: "Register",
+	}
+	file := "../../../example/gen.go"
+	result, err := gen.Generate(file)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(result.WithDocAddress("http://example.com/api").GenerateGo("client", true))
+}
+
 func TestGenerateKtor(t *testing.T) {
 	gen := WrapperGenerator{
 		TypeName: "User",

@@ -8,7 +8,7 @@ import (
 	"go/ast"
 )
 
-func (result *generationResult) GenerateGo(pkg string) string {
+func (result *generationResult) GenerateGo(pkg string, linkedTypes bool) string {
 	var typer GoType
 	typer.BeforeInspect = deepparser.RemoveJsonIgnoredFields
 	for _, mth := range result.UsedMethods {
@@ -18,38 +18,39 @@ func (result *generationResult) GenerateGo(pkg string) string {
 	}
 
 	var types = jen.Empty()
-
-	for _, definition := range typer.Ordered {
-		if definition.Import.Type == godetector.GoRoot {
-			continue
-		}
-		if !definition.IsTypeAlias() {
-			continue
-		}
-		fd, _ := typer.MapDefinition(definition)
-		types.Type().Id(definition.TypeName).Add(fd).Line()
-		types.Const().DefsFunc(func(constTypes *jen.Group) {
-			for _, value := range definition.FindEnumValues() {
-				constTypes.Id(value.Name).Id(definition.TypeName).Op("=").Id(value.Value)
+	if !linkedTypes {
+		for _, definition := range typer.Ordered {
+			if definition.Import.Type == godetector.GoRoot {
+				continue
 			}
-		}).Line()
-
-	}
-
-	for _, definition := range typer.Ordered {
-		if definition.Import.Type == godetector.GoRoot {
-			continue
-		}
-		if !shouldBeDefined(definition) {
-			continue
-		}
-		if !definition.IsTypeAlias() {
-			types.Comment(definition.Type.Comment.Text()).Line().Type().Id(definition.TypeName).StructFunc(func(group *jen.Group) {
-				for _, field := range definition.StructFields() {
-					fd, _ := typer.MapField(field)
-					group.Id(field.Name).Add(fd).Tag(map[string]string{"json": field.Tag})
+			if !definition.IsTypeAlias() {
+				continue
+			}
+			fd, _ := typer.MapDefinition(definition)
+			types.Type().Id(definition.TypeName).Add(fd).Line()
+			types.Const().DefsFunc(func(constTypes *jen.Group) {
+				for _, value := range definition.FindEnumValues() {
+					constTypes.Id(value.Name).Id(definition.TypeName).Op("=").Id(value.Value)
 				}
-			}).Line().Line()
+			}).Line()
+
+		}
+
+		for _, definition := range typer.Ordered {
+			if definition.Import.Type == godetector.GoRoot {
+				continue
+			}
+			if !shouldBeDefined(definition) {
+				continue
+			}
+			if !definition.IsTypeAlias() {
+				types.Comment(definition.Type.Comment.Text()).Line().Type().Id(definition.TypeName).StructFunc(func(group *jen.Group) {
+					for _, field := range definition.StructFields() {
+						fd, _ := typer.MapField(field)
+						group.Id(field.Name).Add(fd).Tag(map[string]string{"json": field.Tag})
+					}
+				}).Line().Line()
+			}
 		}
 	}
 
@@ -70,11 +71,18 @@ func (result *generationResult) GenerateGo(pkg string) string {
 
 	for _, method := range result.UsedMethods {
 		ret, _ := typer.MapTyped(method.Return())
+		if linkedTypes {
+			ret = method.Return().Qual(result.Import)
+		}
 		types.Comment(method.Comment()).Line().Func().Params(jen.Id("impl").Op("*").Id(apiClient)).Id(method.Name).ParamsFunc(func(params *jen.Group) {
 			params.Id("ctx").Qual("context", "Context")
 			for _, param := range method.Args() {
-				fd, _ := typer.MapTyped(param.typed)
-				params.Id(param.Name).Add(fd)
+				if linkedTypes {
+					params.Id(param.Name).Add(param.Qual(result.Import))
+				} else {
+					fd, _ := typer.MapTyped(param.typed)
+					params.Id(param.Name).Add(fd)
+				}
 			}
 		}).Params(
 			jen.Id("reply").Add(ret),

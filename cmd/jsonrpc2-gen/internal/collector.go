@@ -120,12 +120,7 @@ func (a typed) localQual() string {
 	return a.Import + "@" + a.Type
 }
 
-type arg struct {
-	Name string
-	typed
-}
-
-func (a arg) Qual(parentImportPath string) jen.Code {
+func (a typed) Qual(parentImportPath string) jen.Code {
 	if a.Import == "" {
 		if parentImportPath == "" || !ast.IsExported(a.Type) {
 			return jen.Op(a.Ops).Id(a.Type)
@@ -133,6 +128,11 @@ func (a arg) Qual(parentImportPath string) jen.Code {
 		return jen.Op(a.Ops).Qual(parentImportPath, a.Type)
 	}
 	return jen.Op(a.Ops).Qual(a.Import, a.Type)
+}
+
+type arg struct {
+	Name string
+	typed
 }
 
 func (mg *Method) Args() []arg {
