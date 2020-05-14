@@ -2,6 +2,7 @@ package jsonrpc2
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/websocket"
@@ -38,8 +39,12 @@ func UnmarshalArray(params json.RawMessage, args ...interface{}) error {
 
 // Expose JSON-RPC route over HTTP Rest (POST) and web sockets (GET)
 func Handler(router *Router) http.HandlerFunc {
-	rest := HandlerRest(router)
-	ws := HandlerWS(router)
+	return HandlerContext(context.Background(), router)
+}
+
+func HandlerContext(ctx context.Context, router *Router) http.HandlerFunc {
+	rest := HandlerRestContext(ctx, router)
+	ws := HandlerWSContext(ctx, router)
 	return func(writer http.ResponseWriter, request *http.Request) {
 		if request.Method == http.MethodGet {
 			ws.ServeHTTP(writer, request)
@@ -51,7 +56,13 @@ func Handler(router *Router) http.HandlerFunc {
 
 // Expose JSON-RPC router as HTTP handler where one requests is one execution.
 // Supported methods: POST, PUT, PATCH
+// Expose JSON-RPC router as HTTP handler where one requests is one execution.
+// Supported methods: POST, PUT, PATCH
 func HandlerRest(router *Router) http.HandlerFunc {
+	return HandlerRestContext(context.Background(), router)
+}
+
+func HandlerRestContext(ctx context.Context, router *Router) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		defer request.Body.Close()
 		switch request.Method {
@@ -60,7 +71,7 @@ func HandlerRest(router *Router) http.HandlerFunc {
 			http.Error(writer, "Method not supported", http.StatusMethodNotAllowed)
 			return
 		}
-		resp, isBatch := router.Invoke(request.Body)
+		resp, isBatch := router.InvokeContext(ctx, request.Body)
 		writer.Header().Set("Content-Type", "application/json")
 		writer.WriteHeader(http.StatusOK)
 		enc := json.NewEncoder(writer)
@@ -79,6 +90,10 @@ func HandlerRest(router *Router) http.HandlerFunc {
 
 // Process requests over web socket (all requests are processing in parallel in a separate go-routine)
 func HandlerWS(router *Router) http.HandlerFunc {
+	return HandlerWSContext(context.Background(), router)
+}
+
+func HandlerWSContext(ctx context.Context, router *Router) http.HandlerFunc {
 	upgrader := websocket.Upgrader{
 		ReadBufferSize:  8192,
 		WriteBufferSize: 8192,
@@ -104,7 +119,7 @@ func HandlerWS(router *Router) http.HandlerFunc {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				resp, isBatch := router.Invoke(bytes.NewReader(p))
+				resp, isBatch := router.InvokeContext(ctx, bytes.NewReader(p))
 				var replyData []byte
 				if isBatch {
 					replyData, err = json.MarshalIndent(resp, "", "  ")
