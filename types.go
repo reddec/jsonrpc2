@@ -1,6 +1,7 @@
 package jsonrpc2
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -87,13 +88,13 @@ type Response struct {
 //
 // Returned data should be JSON serializable and not nil for success
 type Method interface {
-	JsonCall(params json.RawMessage, positional bool) (interface{}, error)
+	JsonCall(ctx context.Context, params json.RawMessage, positional bool) (interface{}, error)
 }
 
-type MethodFunc func(params json.RawMessage, positional bool) (interface{}, error)
+type MethodFunc func(ctx context.Context, params json.RawMessage, positional bool) (interface{}, error)
 
-func (m MethodFunc) JsonCall(params json.RawMessage, positional bool) (interface{}, error) {
-	return m(params, positional)
+func (m MethodFunc) JsonCall(ctx context.Context, params json.RawMessage, positional bool) (interface{}, error) {
+	return m(ctx, params, positional)
 }
 
 // Wrap function as JSON-RPC method for usage in router
@@ -105,15 +106,8 @@ func Function(handler interface{}) (*callableWrapper, error) {
 		return nil, errors.New("handler is nil")
 	}
 	typ := val.Type()
-	if typ.Kind() != reflect.Func {
-		return nil, errors.New("handler is not a function")
-	}
-	if typ.NumOut() != 2 {
-		return nil, errors.New("function should return exactly two values: payload and error")
-	}
-	errorInterface := reflect.TypeOf((*error)(nil)).Elem()
-	if !typ.Out(1).Implements(errorInterface) {
-		return nil, errors.New("last return value of function should be an error")
+	if err := validateFunction(typ); err != nil {
+		return nil, err
 	}
 	return &callableWrapper{tp: typ, fn: val}, nil
 }
@@ -123,7 +117,7 @@ type callableWrapper struct {
 	tp reflect.Type
 }
 
-func (c *callableWrapper) JsonCall(params json.RawMessage, positional bool) (interface{}, error) {
+func (c *callableWrapper) JsonCall(ctx context.Context, params json.RawMessage, positional bool) (interface{}, error) {
 	if !positional {
 		return nil, errors.New("exported function supports only positional arguments")
 	}
@@ -134,20 +128,20 @@ func (c *callableWrapper) JsonCall(params json.RawMessage, positional bool) (int
 	}
 
 	N := c.tp.NumIn()
-	if len(rawArgs) != N {
-		return nil, fmt.Errorf("mismatch number of arguments: expected %v but got %v", N, len(rawArgs))
+	if len(rawArgs) != N-1 {
+		return nil, fmt.Errorf("mismatch number of arguments: expected %v but got %v", N-1, len(rawArgs))
 	}
 
 	var args = make([]reflect.Value, N)
-
-	for i := 0; i < N; i++ {
+	args[0] = reflect.ValueOf(ctx)
+	for i := 1; i < N; i++ {
 		tp := c.tp.In(i)
 		v := reflect.New(tp)
 
-		rawArg := rawArgs[i]
+		rawArg := rawArgs[i-1]
 		err = json.Unmarshal(rawArg, v.Interface())
 		if err != nil {
-			return nil, fmt.Errorf("parse arg %d: %v", i, err)
+			return nil, fmt.Errorf("parse arg %d: %v", i-1, err)
 		}
 		args[i] = v.Elem()
 	}
@@ -169,24 +163,16 @@ func RPCLike(handler interface{}) (*rpcLikeCallable, error) {
 		return nil, errors.New("handler is nil")
 	}
 	typ := val.Type()
-	if typ.Kind() != reflect.Func {
-		return nil, errors.New("handler is not a function")
+	if typ.NumIn() != 2 {
+		return nil, errors.New("number of input arguments should be exactly two (context and payload)")
 	}
-	if typ.NumOut() != 2 {
-		return nil, errors.New("function should return exactly two values: payload and error")
-	}
-	errorInterface := reflect.TypeOf((*error)(nil)).Elem()
-	if !typ.Out(1).Implements(errorInterface) {
-		return nil, errors.New("last return value of function should be an error")
-	}
-	if typ.NumIn() != 1 {
-		return nil, errors.New("number of input arguments should be exactly one")
-	}
-	tp := typ.In(0)
+	tp := typ.In(1)
 	if tp.Kind() != reflect.Ptr || tp.Elem().Kind() != reflect.Struct {
 		return nil, errors.New("first argument should be pointer to struct")
 	}
-
+	if err := validateFunction(typ); err != nil {
+		return nil, err
+	}
 	return &rpcLikeCallable{argType: tp, fn: val, fnType: typ}, nil
 }
 
@@ -196,23 +182,47 @@ type rpcLikeCallable struct {
 	fnType  reflect.Type
 }
 
-func (r *rpcLikeCallable) JsonCall(params json.RawMessage, positional bool) (interface{}, error) {
+func (r *rpcLikeCallable) JsonCall(ctx context.Context, params json.RawMessage, positional bool) (interface{}, error) {
 	if positional {
 		return nil, errors.New("exported function supports only named arguments")
 	}
-	return r.callByNamed(params)
+	return r.callByNamed(ctx, params)
 }
 
-func (r *rpcLikeCallable) callByNamed(params json.RawMessage) (interface{}, error) {
+func (r *rpcLikeCallable) callByNamed(ctx context.Context, params json.RawMessage) (interface{}, error) {
+	var args [2]reflect.Value
+	args[0] = reflect.ValueOf(ctx)
 	arg := reflect.New(r.argType)
 	err := json.Unmarshal(params, arg.Interface())
+	args[1] = arg.Elem()
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse arguments: %v", err)
 	}
-	res := r.fn.Call([]reflect.Value{arg.Elem()})
+	res := r.fn.Call(args[:])
 	var outErr error
 	if !res[1].IsNil() {
 		outErr = res[1].Interface().(error)
 	}
 	return res[0].Interface(), outErr
+}
+
+func validateFunction(typ reflect.Type) error {
+	if typ.Kind() != reflect.Func {
+		return errors.New("handler is not a function")
+	}
+	if typ.NumOut() != 2 {
+		return errors.New("function should return exactly two values: payload and error")
+	}
+	if typ.NumIn() == 0 {
+		return errors.New("function should have at least one argument (context)")
+	}
+	ctxInterface := reflect.TypeOf((*context.Context)(nil)).Elem()
+	if !typ.In(0).Implements(ctxInterface) {
+		return errors.New("first argument should be context")
+	}
+	errorInterface := reflect.TypeOf((*error)(nil)).Elem()
+	if !typ.Out(1).Implements(errorInterface) {
+		return errors.New("last return value of function should be an error")
+	}
+	return nil
 }

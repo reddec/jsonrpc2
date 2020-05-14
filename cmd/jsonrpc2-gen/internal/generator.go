@@ -111,7 +111,7 @@ func (wg *WrapperGenerator) generateFunction(info *Interface, fs *token.FileSet,
 		params.Id("router").Op("*").Qual(Import, "Router")
 		params.Id("wrap").Add(qual)
 		if wg.Interceptor {
-			params.Id("interceptor").Func().Params(jen.Id("methodName").String(), jen.Id("params").Index().Interface()).Error()
+			params.Id("interceptor").Func().Params(jen.Id("ctx").Qual("context", "Context"), jen.Id("methodName").String(), jen.Id("params").Index().Interface()).Error()
 		}
 	}).Index().String().BlockFunc(func(group *jen.Group) {
 		for _, method := range info.Methods {
@@ -130,7 +130,7 @@ func (wg *WrapperGenerator) generateFunction(info *Interface, fs *token.FileSet,
 }
 
 func (wg *WrapperGenerator) generateLambda(method *Method, fs *token.FileSet, file *ast.File, importPath string) jen.Code {
-	return jen.Func().Params(jen.Id("params").Qual("encoding/json", "RawMessage"), jen.Id("positional").Bool()).Call(jen.Interface(), jen.Error()).BlockFunc(func(group *jen.Group) {
+	return jen.Func().Params(jen.Id("ctx").Qual("context", "Context"), jen.Id("params").Qual("encoding/json", "RawMessage"), jen.Id("positional").Bool()).Call(jen.Interface(), jen.Error()).BlockFunc(func(group *jen.Group) {
 		var argNames []string
 		if method.Type.Params != nil && len(method.Type.Params.List) > 0 {
 			group.Var().Id("args").StructFunc(func(st *jen.Group) {
@@ -159,7 +159,7 @@ func (wg *WrapperGenerator) generateLambda(method *Method, fs *token.FileSet, fi
 			})
 		}
 		if wg.Interceptor {
-			group.If(jen.Err().Op(":=").Id("interceptor").Call(jen.Lit(wg.Qual(method)), jen.Index().Interface().ValuesFunc(func(params *jen.Group) {
+			group.If(jen.Err().Op(":=").Id("interceptor").Call(jen.Id("ctx"), jen.Lit(wg.Qual(method)), jen.Index().Interface().ValuesFunc(func(params *jen.Group) {
 				for _, arg := range argNames {
 					params.Id("args").Dot(arg)
 				}
@@ -168,6 +168,7 @@ func (wg *WrapperGenerator) generateLambda(method *Method, fs *token.FileSet, fi
 			})
 		}
 		group.Return().Id("wrap").Dot(method.Name).CallFunc(func(params *jen.Group) {
+			params.Id("ctx")
 			for _, arg := range argNames {
 				params.Id("args").Dot(arg)
 			}

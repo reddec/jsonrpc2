@@ -156,7 +156,7 @@ func (mg *Method) Args() []arg {
 			})
 		}
 	}
-	return args
+	return args[1:]
 }
 
 func (mg *Method) Return() typed {
@@ -219,6 +219,7 @@ func CollectInfo(search string, file *ast.File, fs *token.FileSet, fileName stri
 		prevComment string
 		imports     []*ast.ImportSpec
 	)
+	dir := filepath.Dir(fileName)
 	var srv *Interface
 	for _, def := range file.Decls {
 		ast.Inspect(def, func(node ast.Node) bool {
@@ -236,6 +237,7 @@ func CollectInfo(search string, file *ast.File, fs *token.FileSet, fileName stri
 					comment = ""
 					return true
 				}
+
 				srv = &Interface{
 					Name:    name,
 					Comment: comment,
@@ -243,8 +245,11 @@ func CollectInfo(search string, file *ast.File, fs *token.FileSet, fileName stri
 				}
 
 				for _, fn := range v.Methods.List {
+					if len(fn.Names) == 0 || !ast.IsExported(fn.Names[0].Name) {
+						continue
+					}
 					tp := fn.Type.(*ast.FuncType)
-					if !isMethodValid(tp) {
+					if !isMethodValid(srv, tp, file, dir) {
 						log.Println("method", fn.Names[0].Name, "has unsupported signature")
 						continue
 					}
@@ -272,8 +277,8 @@ func CollectInfo(search string, file *ast.File, fs *token.FileSet, fileName stri
 	return srv, nil
 }
 
-func isMethodValid(tp *ast.FuncType) bool {
-	if tp.Results == nil {
+func isMethodValid(iface *Interface, tp *ast.FuncType, file *ast.File, dir string) bool {
+	if tp.Results == nil || tp.Params == nil {
 		return false
 	}
 	list := tp.Results.List
@@ -281,6 +286,21 @@ func isMethodValid(tp *ast.FuncType) bool {
 		// payload + error
 		return false
 	}
+	if len(tp.Params.List) == 0 {
+		// first should be context
+		return false
+	}
+	ctx := tp.Params.List[0]
+	alias := detectPackageInType(ctx.Type)
+	def := deepparser.FindDefinitionFromAst(rebuildTypeNameWithoutPackage(ctx.Type), alias, file, dir)
+	if def == nil {
+		return false
+	}
+
+	if !(def.Import.Path == "context" && def.TypeName == "Context" && rebuildOps(ctx.Type) == "") {
+		return false
+	}
+
 	return true
 }
 

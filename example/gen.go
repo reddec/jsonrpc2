@@ -1,6 +1,7 @@
 package example
 
 import (
+	"context"
 	bg "math/big"
 	"time"
 )
@@ -57,7 +58,7 @@ type Profile struct {
 // General user profile access
 type User interface {
 	// Get user profile
-	Profile(token string, at time.Time, val *bg.Int) (*Profile, error)
+	Profile(ctx context.Context, token string, at time.Time, val *bg.Int) (*Profile, error)
 	privateSum(a, b int) (int, error)
-	Latest(times []*time.Time, num int) (time.Time, error)
+	Latest(ctx context.Context, times []*time.Time, num int) (time.Time, error)
 }

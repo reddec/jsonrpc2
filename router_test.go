@@ -2,6 +2,7 @@ package jsonrpc2
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -13,7 +14,7 @@ import (
 
 func TestPositional(t *testing.T) {
 	router := &Router{}
-	err := router.RegisterPositionalOnly("sum", func(a, b int, c *int) (int, error) {
+	err := router.RegisterPositionalOnly("sum", func(ctx context.Context, a, b int, c *int) (int, error) {
 		return a + b + *c, nil
 	})
 	if err != nil {
@@ -52,7 +53,7 @@ func TestPositional(t *testing.T) {
 
 func TestNamed(t *testing.T) {
 	router := &Router{}
-	err := router.RegisterNamedOnly("sum", func(params *struct {
+	err := router.RegisterNamedOnly("sum", func(ctx context.Context, params *struct {
 		A int  `json:"a"`
 		B int  `json:"b"`
 		C *int `json:"c"`
@@ -95,7 +96,7 @@ func TestNamed(t *testing.T) {
 
 func TestBatched(t *testing.T) {
 	router := &Router{}
-	err := router.RegisterPositionalOnly("sum", func(a, b int, c *int) (int, error) {
+	err := router.RegisterPositionalOnly("sum", func(ctx context.Context, a, b int, c *int) (int, error) {
 		return a + b + *c, nil
 	})
 	if err != nil {
@@ -154,7 +155,7 @@ func TestBatched(t *testing.T) {
 func TestNotification_single(t *testing.T) {
 	router := &Router{}
 	var invoked bool
-	err := router.RegisterPositionalOnly("sum", func(a, b int, c *int) (int, error) {
+	err := router.RegisterPositionalOnly("sum", func(ctx context.Context, a, b int, c *int) (int, error) {
 		invoked = true
 		return a + b + *c, nil
 	})
@@ -184,7 +185,7 @@ func TestNotification_single(t *testing.T) {
 func TestNotification_batch(t *testing.T) {
 	router := &Router{}
 	var invoked int32
-	err := router.RegisterPositionalOnly("sum", func(a, b int, c *int) (int, error) {
+	err := router.RegisterPositionalOnly("sum", func(ctx context.Context, a, b int, c *int) (int, error) {
 		atomic.AddInt32(&invoked, 1)
 		return a + b + *c, nil
 	})
@@ -219,7 +220,7 @@ func TestNotification_batch(t *testing.T) {
 func TestNotificationWithRegular_batch(t *testing.T) {
 	router := &Router{}
 	var invoked int32
-	err := router.RegisterPositionalOnly("sum", func(a, b int, c *int) (int, error) {
+	err := router.RegisterPositionalOnly("sum", func(ctx context.Context, a, b int, c *int) (int, error) {
 		atomic.AddInt32(&invoked, 1)
 		return a + b + *c, nil
 	})
@@ -363,7 +364,7 @@ func TestInvalidRequest(t *testing.T) {
 
 func TestAppError(t *testing.T) {
 	router := &Router{}
-	err := router.RegisterPositionalOnly("sum", func(a, b int, c *int) (int, error) {
+	err := router.RegisterPositionalOnly("sum", func(ctx context.Context, a, b int, c *int) (int, error) {
 		return a + b + *c, errors.New("the summation error")
 	})
 	if err != nil {
@@ -409,7 +410,7 @@ func TestAppError(t *testing.T) {
 
 func TestHandler(t *testing.T) {
 	router := &Router{}
-	err := router.RegisterPositionalOnly("sum", func(a, b int, c *int) (int, error) {
+	err := router.RegisterPositionalOnly("sum", func(ctx context.Context, a, b int, c *int) (int, error) {
 		return a + b + *c, nil
 	})
 	if err != nil {
@@ -458,7 +459,7 @@ func TestHandler(t *testing.T) {
 
 func TestRouter_InterceptMethods(t *testing.T) {
 	router := &Router{}
-	err := router.RegisterPositionalOnly("sum", func(a, b int, c *int) (int, error) {
+	err := router.RegisterPositionalOnly("sum", func(ctx context.Context, a, b int, c *int) (int, error) {
 		return a + b + *c, nil
 	})
 	if err != nil {
@@ -504,7 +505,7 @@ func TestRouter_InterceptMethods(t *testing.T) {
 }
 func TestRouter_Intercept(t *testing.T) {
 	router := &Router{}
-	err := router.RegisterPositionalOnly("sum", func(a, b int, c *int) (int, error) {
+	err := router.RegisterPositionalOnly("sum", func(ctx context.Context, a, b int, c *int) (int, error) {
 		return a + b + *c, nil
 	})
 	if err != nil {
@@ -549,7 +550,7 @@ func TestRouter_Intercept(t *testing.T) {
 }
 func TestCustomError(t *testing.T) {
 	router := &Router{}
-	err := router.RegisterPositionalOnly("sum", func(a, b int, c *int) (int, error) {
+	err := router.RegisterPositionalOnly("sum", func(ctx context.Context, a, b int, c *int) (int, error) {
 		return a + b + *c, &Error{
 			Code:    1234,
 			Message: "Test Error",
@@ -598,7 +599,7 @@ func TestCustomError(t *testing.T) {
 
 func ExampleRouter_RegisterPositionalOnly() {
 	router := &Router{}
-	err := router.RegisterPositionalOnly("sum", func(a, b int) (int, error) {
+	err := router.RegisterPositionalOnly("sum", func(ctx context.Context, a, b int) (int, error) {
 		return a + b, nil
 	})
 	if err != nil {
@@ -612,7 +613,7 @@ func ExampleRouter_RegisterNamedOnly() {
 		B int `json:"b"`
 	}
 	router := &Router{}
-	err := router.RegisterNamedOnly("sum", func(params *Args) (int, error) {
+	err := router.RegisterNamedOnly("sum", func(ctx context.Context, params *Args) (int, error) {
 		return params.A + params.B, nil
 	})
 	if err != nil {
@@ -622,7 +623,7 @@ func ExampleRouter_RegisterNamedOnly() {
 
 func ExampleHandler() {
 	var router Router
-	router.RegisterPositionalOnly("sum", func(a, b int) (int, error) {
+	router.RegisterPositionalOnly("sum", func(ctx context.Context, a, b int) (int, error) {
 		return a + b, nil
 	})
 	http.ListenAndServe(":8080", Handler(&router))

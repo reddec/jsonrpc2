@@ -2,13 +2,14 @@ package jsonrpc2
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"testing"
 )
 
 func TestMaxBatch(t *testing.T) {
 	router := &Router{}
-	err := router.RegisterPositionalOnly("sum", func(a, b int, c *int) (int, error) {
+	err := router.RegisterPositionalOnly("sum", func(ctx context.Context, a, b int, c *int) (int, error) {
 		return a + b + *c, nil
 	})
 	if err != nil {

@@ -7,72 +7,24 @@ import (
 	"testing"
 )
 
-func ExampleGenerate() {
+func TestGenerate(t *testing.T) {
 	gen := WrapperGenerator{
-		TypeName:  "User",
-		FuncName:  "RegisterUser",
-		Namespace: "User",
+		TypeName:    "User",
+		FuncName:    "RegisterUser",
+		Namespace:   "User",
+		Interceptor: true,
 	}
 
 	result, err := gen.Generate("../../../example/gen.go")
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
 	f := jen.NewFilePathName("github.com/reddec/jsonrpc2/example", "example")
 	f.Add(result.Code)
 	err = f.Render(os.Stdout)
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
-
-	// Output:
-	//package example
-	//
-	//import (
-	//	"encoding/json"
-	//	jsonrpc2 "github.com/reddec/jsonrpc2"
-	//	"math/big"
-	//	"time"
-	//)
-	//
-	//func RegisterUser(router *jsonrpc2.Router, wrap User) []string {
-	//	router.RegisterFunc("User.Profile", func(params json.RawMessage, positional bool) (interface{}, error) {
-	//		var args struct {
-	//			Arg0 string    `json:"token"`
-	//			Arg1 time.Time `json:"at"`
-	//			Arg2 *big.Int  `json:"val"`
-	//		}
-	//		var err error
-	//		if positional {
-	//			err = jsonrpc2.UnmarshalArray(params, &args.Arg0, &args.Arg1, &args.Arg2)
-	//		} else {
-	//			err = json.Unmarshal(params, &args)
-	//		}
-	//		if err != nil {
-	//			return nil, err
-	//		}
-	//		return wrap.Profile(args.Arg0, args.Arg1, args.Arg2)
-	//	})
-	//
-	//	router.RegisterFunc("User.Latest", func(params json.RawMessage, positional bool) (interface{}, error) {
-	//		var args struct {
-	//			Arg0 []*time.Time `json:"times"`
-	//		}
-	//		var err error
-	//		if positional {
-	//			err = jsonrpc2.UnmarshalArray(params, &args.Arg0)
-	//		} else {
-	//			err = json.Unmarshal(params, &args)
-	//		}
-	//		if err != nil {
-	//			return nil, err
-	//		}
-	//		return wrap.Latest(args.Arg0)
-	//	})
-	//
-	//	return []string{"User.Profile", "User.Latest"}
-	//}
-
 }
 
 func TestGenerationResult_GenerateGo(t *testing.T) {
