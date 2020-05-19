@@ -132,7 +132,8 @@ func (wg *WrapperGenerator) generateFunction(info *Interface, fs *token.FileSet,
 func (wg *WrapperGenerator) generateLambda(method *Method, fs *token.FileSet, file *ast.File, importPath string) jen.Code {
 	return jen.Func().Params(jen.Id("ctx").Qual("context", "Context"), jen.Id("params").Qual("encoding/json", "RawMessage"), jen.Id("positional").Bool()).Call(jen.Interface(), jen.Error()).BlockFunc(func(group *jen.Group) {
 		var argNames []string
-		if method.Type.Params != nil && len(method.Type.Params.List) > 0 {
+		args := method.Args()
+		if len(args) > 0 {
 			group.Var().Id("args").StructFunc(func(st *jen.Group) {
 				for _, arg := range method.Args() {
 					name := "Arg" + strconv.Itoa(len(argNames))
