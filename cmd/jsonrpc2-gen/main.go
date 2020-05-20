@@ -24,8 +24,8 @@ type Config struct {
 	Namespace               string   `short:"N" long:"namespace" env:"NAMESPACE" description:"Custom namespace for functions. If not defined - interface name will be used" default:""`
 	Wrapper                 string   `short:"w" long:"wrapper" env:"WRAPPER" description:"Wrapper function name. If not defined - Register<interface> name will be used" default:""`
 	Output                  string   `short:"o" long:"output" env:"OUTPUT" description:"Generated output destination (- means STDOUT)" default:"-"`
-	CustomTypeHandlerPrefix string   `long:"custom-type-handler-prefix" env:"CUSTOM_TYPE_HANDLER_PREFIX" description:"Custom prefix for methods for custom handlers" default:"Validate"`
-	CustomTypeHandler       []string `short:"T" long:"custom-type-handler" env:"CUSTOM_TYPE_HANDLER" description:"Handlers for custom types"`
+	CustomTypeHandlerPrefix string   `yaml:"custom_type_handler_prefix" long:"custom-type-handler-prefix" env:"CUSTOM_TYPE_HANDLER_PREFIX" description:"Custom prefix for methods for custom handlers" default:"Validate"`
+	CustomTypeHandler       []string `yaml:"custom_type_handler" short:"T" long:"custom-type-handler" env:"CUSTOM_TYPE_HANDLER" description:"Handlers for custom types"`
 	Package                 string   `short:"p" long:"package" env:"PACKAGE" description:"Package name (can be override by output dir)" default:"events"`
 	Doc                     string   `short:"d" long:"doc" env:"DOC" description:"Generate markdown documentation"`
 	Python                  string   `short:"P" long:"python" env:"PYTHON" description:"Generate Python client" `
