@@ -12,6 +12,7 @@ import (
 	"go/token"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"text/template"
 )
 
@@ -45,11 +46,12 @@ func (c Case) Convert(text string) string {
 }
 
 type WrapperGenerator struct {
-	TypeName    string
-	FuncName    string
-	Namespace   string
-	Case        Case
-	Interceptor bool
+	TypeName       string
+	FuncName       string
+	Namespace      string
+	CustomHandlers []string // custom handlers for types (*import@id)
+	Case           Case
+	Interceptor    bool
 }
 
 func (wg *WrapperGenerator) Qual(mg *Method) string {
@@ -106,17 +108,58 @@ func (wg *WrapperGenerator) generateFunction(info *Interface, fs *token.FileSet,
 	if importPath != "" {
 		qual = jen.Qual(importPath, wg.TypeName)
 	}
+
+	var indexedCustomHandlers = make(map[string]typed)
+	for _, typeID := range wg.CustomHandlers {
+		var ops string
+		if typeID[0] == '*' {
+			ops = "*"
+			typeID = typeID[1:]
+		}
+		imptp := strings.SplitN(typeID, "@", 2)
+		indexedCustomHandlers[typeID] = typed{
+			Type:   imptp[1],
+			Import: imptp[0],
+			Ops:    ops,
+		}
+	}
+
+	var usedTypes = make(map[string]typed)
+
+	// Detect is custom handler needed here
+	for _, method := range info.Methods {
+		for _, arg := range method.Args() {
+			typeID := arg.globalQual(importPath)
+			if tp, ok := indexedCustomHandlers[typeID]; ok && tp.Ops == arg.Ops {
+				usedTypes[typeID] = arg.typed
+			}
+		}
+	}
+
+	var customTypeHandler jen.Code
+	if len(usedTypes) > 0 {
+		// generate type handler
+		customTypeHandler = jen.InterfaceFunc(func(group *jen.Group) {
+			for _, typed := range usedTypes {
+				group.Id(typed.Type).Params(jen.Id("ctx").Qual("context", "Context"), jen.Id("value").Add(typed.Qual(importPath))).Error()
+			}
+		})
+	}
+
 	var usedMethods []*Method
 	code := jen.Func().Id(wg.MustRender(wg.FuncName)).ParamsFunc(func(params *jen.Group) {
 		params.Id("router").Op("*").Qual(Import, "Router")
 		params.Id("wrap").Add(qual)
+		if len(usedTypes) > 0 {
+			params.Id("typeHandler").Add(customTypeHandler)
+		}
 		if wg.Interceptor {
 			params.Id("interceptor").Func().Params(jen.Id("ctx").Qual("context", "Context"), jen.Id("methodName").String(), jen.Id("params").Index().Interface()).Error()
 		}
 	}).Index().String().BlockFunc(func(group *jen.Group) {
 		for _, method := range info.Methods {
 			if ast.IsExported(method.Name) {
-				group.Id("router").Dot("RegisterFunc").Call(jen.Lit(wg.Qual(method)), wg.generateLambda(method, fs, file, importPath)).Line()
+				group.Id("router").Dot("RegisterFunc").Call(jen.Lit(wg.Qual(method)), wg.generateLambda(method, fs, file, importPath, usedTypes)).Line()
 				usedMethods = append(usedMethods, method)
 			}
 		}
@@ -129,7 +172,7 @@ func (wg *WrapperGenerator) generateFunction(info *Interface, fs *token.FileSet,
 	return code, usedMethods
 }
 
-func (wg *WrapperGenerator) generateLambda(method *Method, fs *token.FileSet, file *ast.File, importPath string) jen.Code {
+func (wg *WrapperGenerator) generateLambda(method *Method, fs *token.FileSet, file *ast.File, importPath string, usedCustomTypesHandlers map[string]typed) jen.Code {
 	return jen.Func().Params(jen.Id("ctx").Qual("context", "Context"), jen.Id("params").Qual("encoding/json", "RawMessage"), jen.Id("positional").Bool()).Call(jen.Interface(), jen.Error()).BlockFunc(func(group *jen.Group) {
 		var argNames []string
 		args := method.Args()
@@ -158,7 +201,18 @@ func (wg *WrapperGenerator) generateLambda(method *Method, fs *token.FileSet, fi
 			group.If().Err().Op("!=").Nil().BlockFunc(func(failed *jen.Group) {
 				failed.Return(jen.Nil(), jen.Err())
 			})
+
+			for i, arg := range args {
+				if handler, ok := usedCustomTypesHandlers[arg.globalQual(importPath)]; ok && handler.Ops == arg.Ops {
+					argName := argNames[i]
+					group.Err().Op("=").Id("typeHandler").Dot(arg.Type).Call(jen.Id("ctx"), jen.Id("args").Dot(argName))
+					group.If().Err().Op("!=").Nil().BlockFunc(func(failed *jen.Group) {
+						failed.Return(jen.Nil(), jen.Err())
+					})
+				}
+			}
 		}
+
 		if wg.Interceptor {
 			group.If(jen.Err().Op(":=").Id("interceptor").Call(jen.Id("ctx"), jen.Lit(wg.Qual(method)), jen.Index().Interface().ValuesFunc(func(params *jen.Group) {
 				for _, arg := range argNames {

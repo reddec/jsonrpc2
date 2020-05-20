@@ -130,6 +130,13 @@ func (a typed) Qual(parentImportPath string) jen.Code {
 	return jen.Op(a.Ops).Qual(a.Import, a.Type)
 }
 
+func (a typed) globalQual(parentImport string) string {
+	if a.Import == "" {
+		return parentImport + "@" + a.Type
+	}
+	return a.localQual()
+}
+
 type arg struct {
 	Name string
 	typed
