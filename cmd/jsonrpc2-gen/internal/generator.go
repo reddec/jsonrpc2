@@ -46,12 +46,13 @@ func (c Case) Convert(text string) string {
 }
 
 type WrapperGenerator struct {
-	TypeName       string
-	FuncName       string
-	Namespace      string
-	CustomHandlers []string // custom handlers for types (*import@id)
-	Case           Case
-	Interceptor    bool
+	TypeName                  string
+	FuncName                  string
+	Namespace                 string
+	CustomHandlerMethodPrefix string
+	CustomHandlers            []string // custom handlers for types (*import@id)
+	Case                      Case
+	Interceptor               bool
 }
 
 func (wg *WrapperGenerator) Qual(mg *Method) string {
@@ -141,7 +142,7 @@ func (wg *WrapperGenerator) generateFunction(info *Interface, fs *token.FileSet,
 		// generate type handler
 		customTypeHandler = jen.InterfaceFunc(func(group *jen.Group) {
 			for _, typed := range usedTypes {
-				group.Id(typed.Type).Params(jen.Id("ctx").Qual("context", "Context"), jen.Id("value").Add(typed.Qual(importPath))).Error()
+				group.Id(wg.CustomHandlerMethodPrefix+typed.Type).Params(jen.Id("ctx").Qual("context", "Context"), jen.Id("value").Add(typed.Qual(importPath))).Error()
 			}
 		})
 	}
@@ -205,7 +206,7 @@ func (wg *WrapperGenerator) generateLambda(method *Method, fs *token.FileSet, fi
 			for i, arg := range args {
 				if handler, ok := usedCustomTypesHandlers[arg.globalQual(importPath)]; ok && handler.Ops == arg.Ops {
 					argName := argNames[i]
-					group.Err().Op("=").Id("typeHandler").Dot(arg.Type).Call(jen.Id("ctx"), jen.Id("args").Dot(argName))
+					group.Err().Op("=").Id("typeHandler").Dot(wg.CustomHandlerMethodPrefix+arg.Type).Call(jen.Id("ctx"), jen.Id("args").Dot(argName))
 					group.If().Err().Op("!=").Nil().BlockFunc(func(failed *jen.Group) {
 						failed.Return(jen.Nil(), jen.Err())
 					})

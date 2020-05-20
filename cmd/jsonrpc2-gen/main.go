@@ -19,28 +19,29 @@ import (
 const version = "dev"
 
 type Config struct {
-	File              string   `short:"i" long:"file" env:"GOFILE" description:"File to scan"`
-	Interface         []string `short:"I" long:"interface" env:"INTERFACE" description:"Interface to wrap" required:"yes"`
-	Namespace         string   `short:"N" long:"namespace" env:"NAMESPACE" description:"Custom namespace for functions. If not defined - interface name will be used" default:""`
-	Wrapper           string   `short:"w" long:"wrapper" env:"WRAPPER" description:"Wrapper function name. If not defined - Register<interface> name will be used" default:""`
-	Output            string   `short:"o" long:"output" env:"OUTPUT" description:"Generated output destination (- means STDOUT)" default:"-"`
-	CustomTypeHandler []string `short:"T" long:"custom-type-handler" env:"CUSTOM_TYPE_HANDLER" description:"Handlers for custom types"`
-	Package           string   `short:"p" long:"package" env:"PACKAGE" description:"Package name (can be override by output dir)" default:"events"`
-	Doc               string   `short:"d" long:"doc" env:"DOC" description:"Generate markdown documentation"`
-	Python            string   `short:"P" long:"python" env:"PYTHON" description:"Generate Python client" `
-	JS                string   `long:"js" env:"JS" description:"Generate JS client"`
-	TS                string   `long:"ts" env:"TS" description:"Generate TypeScript client"`
-	TSShimFile        string   `long:"ts-shim-file" yaml:"ts_shim_file" env:"TS_SHIM_FILE" description:"Typescript shim file"`
-	GO                string   `long:"go" env:"GO" description:"Generate independent Golang client"`
-	GoPackage         string   `long:"go-package" env:"GO_PACKAGE" description:"Destination go package" default:"client" yaml:"go_package"`
-	GoLinked          bool     `long:"go-linked" env:"GO_LINKED" description:"Link Go types instead of copy" yaml:"go_linked"`
-	Ktor              string   `long:"ktor" env:"KTOR" description:"KTOR (kotlin) client"`
-	KtorShimFile      string   `long:"ktor-shim-file" env:"KTOR_SHIM_FILE" description:"KTOR shims" yaml:"ktor_shim_file"`
-	Postman           string   `long:"postman" env:"POSTMAN" description:"Generate Postman collection"`
-	Case              string   `short:"c" long:"case" env:"CASE" description:"Method name case style" default:"keep" choice:"keep" choice:"camel" choice:"pascal" choice:"snake" choice:"kebab"`
-	URL               string   `long:"url" env:"URL" description:"URL for examples in documentation" default:"https://example.com/api"`
-	Interceptor       bool     `short:"C" long:"interceptor" env:"INTERCEPTOR" description:"add interceptor for each method"`
-	Config            string   `short:"f" long:"config" env:"CONFIG" description:"Location to configuration file"`
+	File                    string   `short:"i" long:"file" env:"GOFILE" description:"File to scan"`
+	Interface               []string `short:"I" long:"interface" env:"INTERFACE" description:"Interface to wrap" required:"yes"`
+	Namespace               string   `short:"N" long:"namespace" env:"NAMESPACE" description:"Custom namespace for functions. If not defined - interface name will be used" default:""`
+	Wrapper                 string   `short:"w" long:"wrapper" env:"WRAPPER" description:"Wrapper function name. If not defined - Register<interface> name will be used" default:""`
+	Output                  string   `short:"o" long:"output" env:"OUTPUT" description:"Generated output destination (- means STDOUT)" default:"-"`
+	CustomTypeHandlerPrefix string   `long:"custom-type-handler-prefix" env:"CUSTOM_TYPE_HANDLER_PREFIX" description:"Custom prefix for methods for custom handlers" default:"Validate"`
+	CustomTypeHandler       []string `short:"T" long:"custom-type-handler" env:"CUSTOM_TYPE_HANDLER" description:"Handlers for custom types"`
+	Package                 string   `short:"p" long:"package" env:"PACKAGE" description:"Package name (can be override by output dir)" default:"events"`
+	Doc                     string   `short:"d" long:"doc" env:"DOC" description:"Generate markdown documentation"`
+	Python                  string   `short:"P" long:"python" env:"PYTHON" description:"Generate Python client" `
+	JS                      string   `long:"js" env:"JS" description:"Generate JS client"`
+	TS                      string   `long:"ts" env:"TS" description:"Generate TypeScript client"`
+	TSShimFile              string   `long:"ts-shim-file" yaml:"ts_shim_file" env:"TS_SHIM_FILE" description:"Typescript shim file"`
+	GO                      string   `long:"go" env:"GO" description:"Generate independent Golang client"`
+	GoPackage               string   `long:"go-package" env:"GO_PACKAGE" description:"Destination go package" default:"client" yaml:"go_package"`
+	GoLinked                bool     `long:"go-linked" env:"GO_LINKED" description:"Link Go types instead of copy" yaml:"go_linked"`
+	Ktor                    string   `long:"ktor" env:"KTOR" description:"KTOR (kotlin) client"`
+	KtorShimFile            string   `long:"ktor-shim-file" env:"KTOR_SHIM_FILE" description:"KTOR shims" yaml:"ktor_shim_file"`
+	Postman                 string   `long:"postman" env:"POSTMAN" description:"Generate Postman collection"`
+	Case                    string   `short:"c" long:"case" env:"CASE" description:"Method name case style" default:"keep" choice:"keep" choice:"camel" choice:"pascal" choice:"snake" choice:"kebab"`
+	URL                     string   `long:"url" env:"URL" description:"URL for examples in documentation" default:"https://example.com/api"`
+	Interceptor             bool     `short:"C" long:"interceptor" env:"INTERCEPTOR" description:"add interceptor for each method"`
+	Config                  string   `short:"f" long:"config" env:"CONFIG" description:"Location to configuration file"`
 }
 
 func (c Config) GetCase() internal.Case {
@@ -93,12 +94,13 @@ func processInterface(config Config, interfaceName string, appendCli bool) {
 	var out *jen.File
 
 	ev := internal.WrapperGenerator{
-		TypeName:       interfaceName,
-		FuncName:       config.Wrapper,
-		Namespace:      config.MustRender(config.Namespace, interfaceName),
-		Case:           config.GetCase(),
-		Interceptor:    config.Interceptor,
-		CustomHandlers: config.CustomTypeHandler,
+		TypeName:                  interfaceName,
+		FuncName:                  config.Wrapper,
+		Namespace:                 config.MustRender(config.Namespace, interfaceName),
+		Case:                      config.GetCase(),
+		Interceptor:               config.Interceptor,
+		CustomHandlers:            config.CustomTypeHandler,
+		CustomHandlerMethodPrefix: config.CustomTypeHandlerPrefix,
 	}
 	result, err := ev.Generate(config.File)
 	if err != nil {
