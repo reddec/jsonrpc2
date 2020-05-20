@@ -38,9 +38,7 @@ func (result *generationResult) GenerateTS(shimFiles ...string) string {
 		}
 		var ans []*deepparser.Definition
 		for _, d := range tsg.Ordered {
-			if len(d.StructFields()) > 0 {
-				ans = append(ans, d)
-			}
+			ans = append(ans, d)
 		}
 		return ans
 	}
