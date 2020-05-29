@@ -34,6 +34,7 @@ type Config struct {
 	TSShimFile              string   `long:"ts-shim-file" yaml:"ts_shim_file" env:"TS_SHIM_FILE" description:"Typescript shim file"`
 	GO                      string   `long:"go" env:"GO" description:"Generate independent Golang client"`
 	GoPackage               string   `long:"go-package" env:"GO_PACKAGE" description:"Destination go package" default:"client" yaml:"go_package"`
+	GoDefault               string   `long:"go-default" env:"GO_DEFAULT" description:"Name for default constructor for Go clients" default:"Default" yaml:"go_default"`
 	GoLinked                bool     `long:"go-linked" env:"GO_LINKED" description:"Link Go types instead of copy" yaml:"go_linked"`
 	Ktor                    string   `long:"ktor" env:"KTOR" description:"KTOR (kotlin) client"`
 	KtorShimFile            string   `long:"ktor-shim-file" env:"KTOR_SHIM_FILE" description:"KTOR shims" yaml:"ktor_shim_file"`
@@ -165,7 +166,7 @@ func processInterface(config Config, interfaceName string, appendCli bool) {
 		}
 	}
 	if config.GO != "" {
-		err = writeFile(result.MustRender(config.GO), []byte(result.WithDocAddress(config.URL).GenerateGo(result.MustRender(config.GoPackage), config.GoLinked)), 0755)
+		err = writeFile(result.MustRender(config.GO), []byte(result.WithDocAddress(config.URL).GenerateGo(result.MustRender(config.GoPackage), config.GoLinked, result.MustRender(config.GoDefault))), 0755)
 		if err != nil {
 			panic(err)
 		}

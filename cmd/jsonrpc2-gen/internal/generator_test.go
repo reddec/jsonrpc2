@@ -37,7 +37,7 @@ func TestGenerationResult_GenerateGo(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(result.WithDocAddress("http://example.com/api").GenerateGo("client", true))
+	fmt.Println(result.WithDocAddress("http://example.com/api").GenerateGo("client", true, "Def"))
 }
 
 func TestGenerateKtor(t *testing.T) {

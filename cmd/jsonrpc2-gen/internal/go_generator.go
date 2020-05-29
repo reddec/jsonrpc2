@@ -8,7 +8,10 @@ import (
 	"go/ast"
 )
 
-func (result *generationResult) GenerateGo(pkg string, linkedTypes bool) string {
+func (result *generationResult) GenerateGo(pkg string, linkedTypes bool, defaultName string) string {
+	if defaultName == "" {
+		defaultName = "Default"
+	}
 	var typer GoType
 	typer.BeforeInspect = deepparser.RemoveJsonIgnoredFields
 	for _, mth := range result.UsedMethods {
@@ -57,7 +60,7 @@ func (result *generationResult) GenerateGo(pkg string, linkedTypes bool) string 
 	apiClient := result.Service.Name + "Client"
 
 	if result.DocAddr != "" {
-		types.Func().Id("Default").Params().Op("*").Id(apiClient).BlockFunc(func(group *jen.Group) {
+		types.Func().Id(defaultName).Params().Op("*").Id(apiClient).BlockFunc(func(group *jen.Group) {
 			group.Return().Op("&").Id(apiClient).ValuesFunc(func(init *jen.Group) {
 				init.Id("BaseURL").Op(":").Lit(result.DocAddr)
 			})
