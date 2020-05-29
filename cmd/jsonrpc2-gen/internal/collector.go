@@ -163,6 +163,9 @@ func (mg *Method) Args() []arg {
 			})
 		}
 	}
+	if len(args) == 0 {
+		return nil
+	}
 	return args[1:]
 }
 
