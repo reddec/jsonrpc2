@@ -80,7 +80,7 @@ func (result *generationResult) GenerateGo(pkg string, linkedTypes bool, default
 		types.Comment(method.Comment()).Line().Func().Params(jen.Id("impl").Op("*").Id(apiClient)).Id(method.Name).ParamsFunc(func(params *jen.Group) {
 			params.Id("ctx").Qual("context", "Context")
 			for _, param := range method.Args() {
-				if linkedTypes {
+				if linkedTypes && param.Type != "" {
 					params.Id(param.Name).Add(param.Qual(result.Import))
 				} else {
 					fd, _ := typer.MapTyped(param.typed)
@@ -141,7 +141,11 @@ func (py *GoType) MapType(t ast.Expr) (jen.Code, bool) {
 		}
 		return v, ok
 	}
-
+	if mp, ok := t.(*ast.MapType); ok {
+		k, _ := py.MapType(mp.Key)
+		v, _ := py.MapType(mp.Value)
+		return jen.Map(k).Add(v), false
+	}
 	if arr, ok := t.(*ast.ArrayType); ok {
 		v, _ := py.MapType(arr.Elt)
 		return jen.Index().Add(v), false

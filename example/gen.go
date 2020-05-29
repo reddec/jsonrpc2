@@ -60,5 +60,5 @@ type User interface {
 	// Get user profile
 	Profile(ctx context.Context, token string, at time.Time, val *bg.Int) (*Profile, error)
 	privateSum(a, b int) (int, error)
-	Latest(ctx context.Context, times []*time.Time, num int) (time.Time, error)
+	Latest(ctx context.Context, times []*time.Time, num int, info map[string]string) (time.Time, error)
 }
