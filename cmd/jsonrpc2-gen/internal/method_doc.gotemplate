@@ -22,10 +22,12 @@
 {{- range $localType.StructFields}}
 | {{.Tag}} | `{{.Type}}` | {{.Comment | firstLine }} |
 {{- end}}
-{{- else}}
+
+{{else}}
 ```go
 type {{$localType.Definition}}
 ```
 {{- end}}
-{{- end}}
+
+{{ end}}
 

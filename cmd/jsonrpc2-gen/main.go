@@ -28,6 +28,7 @@ type Config struct {
 	CustomTypeHandler       []string `yaml:"custom_type_handler" short:"T" long:"custom-type-handler" env:"CUSTOM_TYPE_HANDLER" description:"Handlers for custom types"`
 	Package                 string   `short:"p" long:"package" env:"PACKAGE" description:"Package name (can be override by output dir)" default:"events"`
 	Doc                     string   `short:"d" long:"doc" env:"DOC" description:"Generate markdown documentation"`
+	DocShimFile             string   `long:"doc-shim-file" yaml:"doc_shim_file" env:"DOC_SHIM_FILE" description:"File for shim for markdown"`
 	Python                  string   `short:"P" long:"python" env:"PYTHON" description:"Generate Python client" `
 	JS                      string   `long:"js" env:"JS" description:"Generate JS client"`
 	TS                      string   `long:"ts" env:"TS" description:"Generate TypeScript client"`
@@ -136,7 +137,7 @@ func processInterface(config Config, interfaceName string, appendCli bool) {
 	}
 
 	if config.Doc != "" {
-		err = writeFile(result.MustRender(config.Doc), []byte(result.WithDocAddress(config.URL).GenerateMarkdown()), 0755)
+		err = writeFile(result.MustRender(config.Doc), []byte(result.WithDocAddress(config.URL).GenerateMarkdown(config.DocShimFile)), 0755)
 		if err != nil {
 			panic(err)
 		}
@@ -197,6 +198,7 @@ func (c *Config) ApplyConfigFile() error {
 		c.Output = resolvePath(root, c.Output)
 	}
 	c.Doc = resolvePath(root, c.Doc)
+	c.DocShimFile = resolvePath(root, c.DocShimFile)
 	c.Python = resolvePath(root, c.Python)
 	c.JS = resolvePath(root, c.JS)
 	c.TS = resolvePath(root, c.TS)

@@ -35,10 +35,14 @@ curl -H 'Content-Type: application/json' --data-binary @- "{{$.DocAddr}}" <<EOF
 EOF
 ```
 {{- end}}
-
 {{- range $index, $localType := $method.LocalTypes $.Import}}
+
 ### {{$localType.Type}}
-{{if $localType.IsStruct}}
+
+{{ with $localType | shimType}}
+{{.}}
+{{- else}}
+{{- if $localType.IsStruct}}
 | Json | Type | Comment |
 |------|------|---------|
 {{- range $localType.StructFields}}
@@ -50,6 +54,5 @@ type {{$localType.Definition}}
 ```
 {{- end}}
 {{- end}}
-
-
+{{- end}}
 {{- end}}

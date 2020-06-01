@@ -9,10 +9,27 @@ import (
 )
 
 //go:generate go-bindata -pkg internal template.gotemplate python.gotemplate js.gotemplate ts.gotemplate method_doc.gotemplate ktor.gotemplate
-func (result *generationResult) GenerateMarkdown() string {
+func (result *generationResult) GenerateMarkdown(shimFile ...string) string {
 	fm := sprig.TxtFuncMap()
+	var shim typesShim
+	for _, file := range shimFile {
+		if file == "" {
+			continue
+		}
+		if err := shim.ShimFromYamlFile(file); err != nil {
+			panic(err)
+		}
+	}
+
 	fm["firstLine"] = func(text string) string {
 		return strings.Split(text, "\n")[0]
+	}
+	fm["shimType"] = func(tp LocalType) string {
+		info := shim.FindShim(tp.Inspect.Import.Path + "@" + tp.Inspect.TypeName)
+		if info == nil {
+			return ""
+		}
+		return info.Content
 	}
 	t := template.Must(template.New("").Funcs(fm).Parse(string(MustAsset("template.gotemplate"))))
 	buffer := &bytes.Buffer{}
