@@ -28,6 +28,7 @@ type Config struct {
 	CustomTypeHandler       []string `yaml:"custom_type_handler" short:"T" long:"custom-type-handler" env:"CUSTOM_TYPE_HANDLER" description:"Handlers for custom types"`
 	Package                 string   `short:"p" long:"package" env:"PACKAGE" description:"Package name (can be override by output dir)" default:"events"`
 	Doc                     string   `short:"d" long:"doc" env:"DOC" description:"Generate markdown documentation"`
+	DocHeader               string   `long:"doc-header" yaml:"doc_header" env:"DOC_HEADER" description:"Markdown template for each file"`
 	DocShimFile             string   `long:"doc-shim-file" yaml:"doc_shim_file" env:"DOC_SHIM_FILE" description:"File for shim for markdown"`
 	Python                  string   `short:"P" long:"python" env:"PYTHON" description:"Generate Python client" `
 	JS                      string   `long:"js" env:"JS" description:"Generate JS client"`
@@ -137,7 +138,7 @@ func processInterface(config Config, interfaceName string, appendCli bool) {
 	}
 
 	if config.Doc != "" {
-		err = writeFile(result.MustRender(config.Doc), []byte(result.WithDocAddress(config.URL).GenerateMarkdown(config.DocShimFile)), 0755)
+		err = writeFile(result.MustRender(config.Doc), []byte(result.WithDocAddress(config.URL).GenerateMarkdown(config.DocHeader, config.DocShimFile)), 0755)
 		if err != nil {
 			panic(err)
 		}

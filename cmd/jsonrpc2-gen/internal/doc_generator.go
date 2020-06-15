@@ -9,7 +9,7 @@ import (
 )
 
 //go:generate go-bindata -pkg internal template.gotemplate python.gotemplate js.gotemplate ts.gotemplate method_doc.gotemplate ktor.gotemplate
-func (result *generationResult) GenerateMarkdown(shimFile ...string) string {
+func (result *generationResult) GenerateMarkdown(header string, shimFile ...string) string {
 	fm := sprig.TxtFuncMap()
 	var shim typesShim
 	for _, file := range shimFile {
@@ -31,7 +31,7 @@ func (result *generationResult) GenerateMarkdown(shimFile ...string) string {
 		}
 		return info.Content
 	}
-	t := template.Must(template.New("").Funcs(fm).Parse(string(MustAsset("template.gotemplate"))))
+	t := template.Must(template.New("").Funcs(fm).Parse(header + "\n" + string(MustAsset("template.gotemplate"))))
 	buffer := &bytes.Buffer{}
 	err := t.Execute(buffer, result)
 	if err != nil {
